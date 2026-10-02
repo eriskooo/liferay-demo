@@ -1,0 +1,3 @@
+Bundle-Name: task-rest
+Bundle-SymbolicName: com.example.task.rest
+Bundle-Version: 1.0.0

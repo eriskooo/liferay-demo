@@ -1,0 +1,6 @@
+Bundle-Name: task-service
+Bundle-SymbolicName: com.example.task.service
+Bundle-Version: 1.0.0
+Liferay-Require-SchemaVersion: 1.0.0
+Liferay-Service: true
+-dsannotations-options: inherit

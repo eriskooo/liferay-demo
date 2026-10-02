@@ -1,0 +1,21 @@
+// Check GETTING_STARTED.md for information regarding usage.
+
+// Společná unit-test konfigurace pro všechny moduly (JUnit 5 + Mockito)
+subprojects {
+	plugins.withId("java") {
+		dependencies {
+			testImplementation group: "com.liferay.portal", name: "release.portal.api"
+			testImplementation platform("org.junit:junit-bom:5.14.4")
+			testImplementation "org.junit.jupiter:junit-jupiter"
+			testImplementation "org.mockito:mockito-core:5.24.0"
+			testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+		}
+
+		test {
+			useJUnitPlatform()
+
+			// Liferay kernel (StringBundler) sahá na JDK internals - portál startuje se stejným --add-opens
+			jvmArgs "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", "--add-opens=java.base/java.lang=ALL-UNNAMED"
+		}
+	}
+}

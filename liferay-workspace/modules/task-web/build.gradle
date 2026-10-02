@@ -1,0 +1,6 @@
+dependencies {
+	compileOnly group: "com.liferay.portal", name: "release.portal.api"
+	compileOnly project(":modules:task:task-api")
+
+	testImplementation project(":modules:task:task-api")
+}

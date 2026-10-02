@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+
+<model-hints>
+	<model name="com.example.task.model.Task">
+		<field name="taskId" type="long" />
+		<field name="groupId" type="long" />
+		<field name="companyId" type="long" />
+		<field name="userId" type="long" />
+		<field name="createDate" type="Date" />
+		<field name="title" type="String" />
+		<field name="done" type="boolean" />
+	</model>
+</model-hints>

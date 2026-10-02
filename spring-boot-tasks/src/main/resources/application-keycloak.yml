@@ -1,0 +1,12 @@
+# Aktivace: --spring.profiles.active=keycloak  (jen ukázka konfigurace, Keycloak není součástí dema)
+tasks:
+  security:
+    enabled: true
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Realm, kam se migrují Liferay uživatelé/role (např. přes LDAP federation nebo export)
+          issuer-uri: http://localhost:8180/realms/liferay-migration

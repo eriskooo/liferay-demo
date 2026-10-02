@@ -1,0 +1,7 @@
+Bundle-Name: task-web
+Bundle-SymbolicName: com.example.task.web
+Bundle-Version: 1.0.0
+Export-Package: com.example.task.web.constants
+Provide-Capability:\
+	liferay.language.resources;\
+		resource.bundle.base.name="content.Language"

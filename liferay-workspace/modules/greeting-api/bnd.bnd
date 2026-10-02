@@ -1,0 +1,5 @@
+Bundle-Name: greeting-api
+Bundle-SymbolicName: com.example.greeting.api
+Bundle-Version: 1.0.0
+# Jen exportované balíčky vidí ostatní bundly. Verze balíčku se bere z packageinfo.
+Export-Package: com.example.greeting.api

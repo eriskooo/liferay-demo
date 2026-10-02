@@ -1,0 +1,10 @@
+Bundle-Name: task-api
+Bundle-SymbolicName: com.example.task.api
+Bundle-Version: 1.0.0
+Export-Package:\
+	com.example.task.exception,\
+	com.example.task.model,\
+	com.example.task.service,\
+	com.example.task.service.persistence
+-check: EXPORTS
+-includeresource: META-INF/service.xml=../task-service/service.xml

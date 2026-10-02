@@ -1,0 +1,46 @@
+# Liferay CE 7.4 GA132 + PostgreSQL (DB sdílí i migrační demo ve spring-boot-tasks)
+#   docker compose up -d        -> http://localhost:8080  (test@liferay.com / test)
+#   ./gradlew deploy            -> JARy do ./bundles/osgi/modules = hot deploy do kontejneru
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: lportal
+      POSTGRES_USER: liferay
+      POSTGRES_PASSWORD: liferay
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liferay -d lportal"]
+      interval: 5s
+      retries: 20
+
+  liferay:
+    image: liferay/portal:7.4.3.132-ga132
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+      # Gogo shell je v kontejneru jen na localhost:11311 -> používej ./gogo.sh
+    environment:
+      # LIFERAY_* proměnné = portal-ext.properties (tečka = _PERIOD_, velké písmeno = _UPPERCASE<X>)
+      LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_DRIVER_UPPERCASEC_LASS_UPPERCASEN_AME: org.postgresql.Driver
+      LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL: jdbc:postgresql://postgres:5432/lportal
+      LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_USERNAME: liferay
+      LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_PASSWORD: liferay
+      LIFERAY_SETUP_PERIOD_WIZARD_PERIOD_ENABLED: "false"
+      LIFERAY_TERMS_PERIOD_OF_PERIOD_USE_PERIOD_REQUIRED: "false"
+      LIFERAY_USERS_PERIOD_REMINDER_PERIOD_QUERIES_PERIOD_ENABLED: "false"
+      LIFERAY_PASSWORDS_PERIOD_DEFAULT_PERIOD_POLICY_PERIOD_CHANGE_PERIOD_REQUIRED: "false"
+      LIFERAY_JVM_OPTS: "-Xms2g -Xmx3g"
+    volumes:
+      # gradlew deploy kopíruje do bundles/osgi/modules, Liferay adresář sleduje (File Install)
+      - ./bundles/osgi/modules:/opt/liferay/osgi/modules
+      - liferay-data:/opt/liferay/data
+
+volumes:
+  pgdata:
+  liferay-data:

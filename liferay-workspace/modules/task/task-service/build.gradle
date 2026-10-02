@@ -1,0 +1,22 @@
+dependencies {
+	api project(":modules:task:task-api")
+
+	compileOnly group: "com.liferay.portal", name: "release.portal.api"
+
+	// Bez pinu workspace plugin stáhne nejnovější Service Builder, který generuje
+	// kód pro novější API, než má GA132 (např. chybějící TaskPersistence.cacheResult).
+	// 1.0.496 = Bundle-Version v tagu 7.4.3.132-ga132 repozitáře liferay-portal.
+	serviceBuilder group: "com.liferay", name: "com.liferay.portal.tools.service.builder", version: "1.0.496"
+}
+
+configurations.serviceBuilder {
+	// workspace plugin přidává vlastní (novější) verzi - vynutíme tu naši
+	resolutionStrategy.force "com.liferay:com.liferay.portal.tools.service.builder:1.0.496"
+}
+
+buildService {
+	apiDir = "../task-api/src/main/java"
+	testDir = "../task-test/src/testIntegration/java"
+}
+
+group = "com.example.task"

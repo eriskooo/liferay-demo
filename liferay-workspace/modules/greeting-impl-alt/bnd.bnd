@@ -1,0 +1,3 @@
+Bundle-Name: greeting-impl-alt
+Bundle-SymbolicName: com.example.greeting.impl.alt
+Bundle-Version: 1.0.0

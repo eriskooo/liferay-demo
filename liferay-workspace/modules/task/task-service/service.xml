@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!DOCTYPE service-builder PUBLIC "-//Liferay//DTD Service Builder 7.4.0//EN" "http://www.liferay.com/dtd/liferay-service-builder_7_4_0.dtd">
+
+<!--
+	Service Builder vygeneruje z tohoto XML:
+	  task-api:     model (Task, TaskModel, TaskWrapper), TaskLocalService(+Util, Wrapper),
+	                TaskPersistence, TaskUtil, NoSuchTaskException
+	  task-service: TaskModelImpl, TaskPersistenceImpl, TaskLocalServiceBaseImpl, SQL skripty,
+	                a jednou (pak už nepřepisuje) TaskImpl + TaskLocalServiceImpl = místo pro vlastní kód.
+	Tabulka v DB = <namespace>_<entity> => DEMO_Task.
+-->
+<service-builder dependency-injector="ds" package-path="com.example.task">
+	<namespace>DEMO</namespace>
+	<entity local-service="true" name="Task" remote-service="false" uuid="false">
+
+		<!-- PK -->
+
+		<column name="taskId" primary="true" type="long" />
+
+		<!-- Multi-tenancy / audit pole, která má v Liferay každá entita -->
+
+		<column name="groupId" type="long" />
+		<column name="companyId" type="long" />
+		<column name="userId" type="long" />
+		<column name="createDate" type="Date" />
+
+		<!-- Doménová pole -->
+
+		<column name="title" type="String" />
+		<column name="done" type="boolean" />
+
+		<order by="desc">
+			<order-column name="createDate" />
+		</order>
+
+		<!-- Vygeneruje findByDone / countByDone v persistence vrstvě -->
+
+		<finder name="Done" return-type="Collection">
+			<finder-column name="done" />
+		</finder>
+		<finder name="GroupId" return-type="Collection">
+			<finder-column name="groupId" />
+		</finder>
+	</entity>
+	<exceptions>
+		<exception>TaskTitle</exception>
+	</exceptions>
+</service-builder>

@@ -1,0 +1,6 @@
+Bundle-Name: greeting-impl
+Bundle-SymbolicName: com.example.greeting.impl
+Bundle-Version: 1.0.0
+# Žádný Export-Package: implementace je privátní, ven jde jen jako OSGi služba.
+# Import-Package bnd dopočítá sám z bytecode -> com.example.greeting.api;version="1.0".
+# DS anotace (@Component) bnd převede na OSGI-INF/*.xml + hlavičku Service-Component.

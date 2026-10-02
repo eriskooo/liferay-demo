@@ -1,0 +1,45 @@
+# 8080 obsadil Liferay (docker compose)
+server:
+  port: 8081
+
+spring:
+  application:
+    name: spring-boot-tasks
+  # Strangler fig: Spring Boot běží nad STEJNOU PostgreSQL jako Liferay (docker compose
+  # v liferay-workspace), ale ve vlastním schématu "tasks". Liferay tabulky (public.*)
+  # jen čte jednorázovou Flyway migrací V2.
+  datasource:
+    url: jdbc:postgresql://localhost:5433/lportal
+    username: liferay
+    password: liferay
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # schéma vlastní Flyway, Hibernate jen kontroluje
+    properties:
+      hibernate.default_schema: tasks
+      # timestamp sloupce = UTC, stejně jako v Liferay DB
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    schemas: tasks
+    create-schemas: true
+    placeholders:
+      liferaySchema: public
+
+# Nahrazuje PortletPreferences (pageSize z EDIT módu portletu)
+tasks:
+  default-page-size: 10
+  max-page-size: 100
+  security:
+    # false = vše povoleno (lokální demo). true = OAuth2 resource server (Keycloak JWT)
+    enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,flyway
