@@ -46,8 +46,6 @@ Nie je to kompletný kurz Liferay. UI veci (fragmenty, témy, web content) vynec
 | 12 | [Migračná stratégia](12_migracna_strategia.md) | Strangler fig, URL, vyhľadávanie, dokumenty, používatelia a oprávnenia | – |
 | 13 | [Otázky na pohovor](13_otazky_na_pohovor.md) | Otázky s odpoveďami + „war stories“ z buildu demo projektu | – |
 
-> Odkazy na kapitoly 01 až 13 začnú fungovať postupne, ako budú kapitoly pribúdať.
-
 ---
 
 ## Slovník pojmov
