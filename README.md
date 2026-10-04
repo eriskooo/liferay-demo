@@ -38,7 +38,7 @@ Obe časti sme naozaj zbuildili, spustili a otestovali (pozri [Overenie](#overen
 - Docker Desktop (Liferay potrebuje ~3 GB RAM)
 - JDK 21 (`java -version`)
 - Maven netreba, projekt má `mvnw`. Gradle netreba, workspace má `gradlew`.
-- **Firemné prostredie:** ak máš v `~/.gradle/init.d/` init skript s interným repozitárom (u mňa `OKsystem-repo.gradle` → `mavenrepo.oksystem.local`), build workspace padne. Riešenie bez zásahu do globálnej konfigurácie je oddelený Gradle home:
+- **Globálne Gradle init skripty:** ak máš v `~/.gradle/init.d/` init skript, ktorý pridáva nedostupný interný repozitár, build workspace padne. Riešenie bez zásahu do globálnej konfigurácie je oddelený Gradle home:
   ```bash
   export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo   # PowerShell: $env:GRADLE_USER_HOME="$HOME\.gradle-liferay-demo"
   ```

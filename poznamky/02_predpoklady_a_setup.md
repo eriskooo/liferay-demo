@@ -3,7 +3,7 @@
 ## Čo sa naučíš
 
 - Čo musí byť nainštalované, aby demo bežalo, a ako to overíš
-- Ako obísť firemný Gradle init skript, ktorý mimo VPN rozbije build
+- Ako obísť globálny Gradle init skript, ktorý by mohol rozbiť build
 - Ako sa orientovať v Liferay Workspace (čo je kde a načo)
 - Ako nastaviť IntelliJ IDEA, aby fungovalo preklikávanie do kódu aj do Liferay tried
 
@@ -66,21 +66,17 @@ Očakávaný výstup (vendor sa môže líšiť):
 openjdk version "21.0.9" 2025-10-21
 ```
 
-### 3. Firemný Gradle init skript (dôležité!)
+### 3. Voliteľne: globálne Gradle init skripty
 
-Gradle pri každom builde spúšťa skripty z `~/.gradle/init.d/`. Na firemnom notebooku je tam:
+Gradle pri každom builde spúšťa skripty z `~/.gradle/init.d/`. Over, či tam niečo máš:
 
 ```bash
 ls ~/.gradle/init.d
 ```
 
-```
-OKsystem-repo.gradle
-```
+Ak je priečinok prázdny alebo neexistuje, tento krok preskoč.
 
-Ten skript pridá do **každého** Gradle buildu firemný Maven repozitár `http://mavenrepo.oksystem.local/repo/default`. Mimo firemnej siete (bez VPN) je nedostupný a stiahnutie závislostí zlyhá.
-
-Riešenie bez zásahu do globálnej konfigurácie: pre tento projekt použi **oddelený Gradle home**. Gradle potom `~/.gradle/init.d` vôbec nevidí.
+Ak tam je skript, ktorý pridáva do **každého** buildu nejaký interný Maven repozitár, a ten repozitár nie je dostupný, stiahnutie závislostí zlyhá. Riešenie bez zásahu do globálnej konfigurácie: pre tento projekt použi **oddelený Gradle home**. Gradle potom `~/.gradle/init.d` vôbec nevidí.
 
 ```bash
 # Git Bash
@@ -92,9 +88,7 @@ export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo
 $env:GRADLE_USER_HOME="$HOME\.gradle-liferay-demo"
 ```
 
-Platí to len pre aktuálne okno terminálu. Pri každom novom okne to nastav znova, alebo to pridaj do `~/.bashrc`, ak chceš natrvalo.
-
-> Na PC bez firemného init skriptu (napr. doma) tento krok nepotrebuješ. Neuškodí však, len sa závislosti stiahnu do iného priečinka.
+Platí to len pre aktuálne okno terminálu. Pri každom novom okne to nastav znova, alebo to pridaj do `~/.bashrc`, ak chceš natrvalo. Neuškodí to ani vtedy, keď init skripty nemáš, len sa závislosti stiahnu do iného priečinka.
 
 ### 4. Over Gradle build workspace
 
@@ -209,7 +203,7 @@ Hlavný rozdiel: v Liferay **kompiluješ proti platforme, ktorá už beží**. V
 
 | Príznak | Príčina | Riešenie |
 |---|---|---|
-| `Could not resolve ...` alebo timeout na `mavenrepo.oksystem.local` | Firemný init skript mimo VPN | `export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo` (krok 3) |
+| `Could not resolve ...` alebo timeout na neznámy interný repozitár | Globálny init skript v `~/.gradle/init.d` pridáva nedostupný repozitár | `export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo` (krok 3) |
 | `error during connect ... dockerDesktopLinuxEngine` | Docker Desktop nebeží | Spustiť Docker Desktop |
 | Gradle hlási nekompatibilnú Javu | `JAVA_HOME` ukazuje na inú verziu | Nastaviť `JAVA_HOME` na JDK 21, v IDEA Gradle JVM = 21 |
 | `./gradlew: Permission denied` (Git Bash) | Chýba príznak spustiteľnosti | `sh gradlew ...` alebo `chmod +x gradlew` |
