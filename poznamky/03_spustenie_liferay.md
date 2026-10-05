@@ -52,15 +52,15 @@ Takže `LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL` = `jdbc.default.url`. Škaredé,
 
 ## Krok po kroku
 
-Všetky príkazy z adresára `liferay-workspace`:
+Všetky príkazy sú pre PowerShell ([kapitola 02](02_predpoklady_a_setup.md)) a spúšťajú sa z adresára `liferay-workspace`:
 
-```bash
+```powershell
 cd liferay-workspace
 ```
 
 ### 1. Spusti kontajnery
 
-```bash
+```powershell
 docker compose up -d
 ```
 
@@ -78,7 +78,7 @@ Liferay čaká, kým je PostgreSQL `Healthy` (`depends_on` + `healthcheck` v com
 
 ### 2. Sleduj štart
 
-```bash
+```powershell
 docker compose logs -f liferay
 ```
 
@@ -98,7 +98,7 @@ Varovanie o sidecare (`WARN`) je v poriadku. Liferay len pripomína, že takto s
 
 ### 3. Over stav kontajnerov
 
-```bash
+```powershell
 docker compose ps
 ```
 
@@ -114,19 +114,23 @@ Oba musia byť `(healthy)`. Kým je Liferay `(health: starting)`, ešte štartuj
 
 ### 4. Over, že odpovedá HTTP
 
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/
+```powershell
+curl.exe -s -o NUL -w '%{http_code}\n' http://localhost:8080/
 ```
 
 Očakávaný výstup: `200`. Prvá požiadavka po štarte môže trvať aj niekoľko sekúnd.
+
+`curl.exe` (nie `curl`) preto, lebo `curl` je v PowerShell 5.1 alias na `Invoke-WebRequest` a parametre `-s`, `-o` by nepochopil. `NUL` je windowsový ekvivalent `/dev/null` (výstup sa zahodí).
 
 ### 5. Over prihlásenie cez REST API
 
 Liferay má zabudované REST API (tzv. **headless API**) na `/o/headless-*`. Najjednoduchší test prihlásenia:
 
-```bash
-curl -s -u test@liferay.com:test http://localhost:8080/o/headless-admin-user/v1.0/my-user-account | grep -E '"(emailAddress|alternateName)"'
+```powershell
+curl.exe -s -u test@liferay.com:test http://localhost:8080/o/headless-admin-user/v1.0/my-user-account | Select-String '"(emailAddress|alternateName)"'
 ```
+
+`Select-String` je PowerShell obdoba `grep`, regulárny výraz berie rovnako.
 
 Očakávaný výstup:
 
@@ -149,7 +153,7 @@ Si administrátor. Na čo sa pozrieť (stačí 5 minút, nič neklikaj „naslep
 |---|---|---|
 | Ikona mriežky vpravo hore → **Control Panel → Users and Organizations** | používatelia | Používatelia žijú v Liferay DB. Pri migrácii idú napríklad do Keycloaku. |
 | **Control Panel → Roles** | role (Administrator, Power User, User, Guest…) | Mapovanie na Spring Security role |
-| Ikona mriežky → **Control Panel → Gogo Shell** | Gogo shell v prehliadači | Rovnaké príkazy ako `./gogo.sh` ([kapitola 05](05_osgi_a_gogo_shell.md)) |
+| Ikona mriežky → **Control Panel → Gogo Shell** | Gogo shell v prehliadači | Rovnaké príkazy ako `.\gogo.ps1` ([kapitola 05](05_osgi_a_gogo_shell.md)) |
 | Ľavé menu (Product Menu) → **Site Builder → Pages** | stránky site | Sem sa pridáva náš portlet ([kapitola 07](07_portlet_mvc.md)) |
 | Ikona mriežky → **Control Panel → Server Administration** | logy, cache, skripty | Prevádzka portálu |
 
@@ -157,26 +161,29 @@ Si administrátor. Na čo sa pozrieť (stačí 5 minút, nič neklikaj „naslep
 
 ### 7. Pozri sa do databázy
 
-```bash
-docker compose exec -T postgres psql -U liferay -d lportal -tAc \
+```powershell
+docker compose exec -T postgres psql -U liferay -d lportal -tAc `
   "select count(*) from information_schema.tables where table_schema='public'"
 ```
 
 Očakávaný výstup: `443` (počet Liferay tabuliek po prvom štarte).
 
-```bash
-docker compose exec -T postgres psql -U liferay -d lportal -c \
+```powershell
+docker compose exec -T postgres psql -U liferay -d lportal -c `
   "select userid, emailaddress, screenname from user_ where emailaddress like '%liferay.com'"
 ```
 
-Očakávaný výstup (ID sa môžu líšiť):
+Backtick `` ` `` na konci riadku je v PowerShelli pokračovanie príkazu na ďalšom riadku (v bashi `\`).
+
+Očakávaný výstup (ID a poradie riadkov sa môžu líšiť):
 
 ```
  userid |            emailaddress             |       screenname
 --------+-------------------------------------+-------------------------
   20096 | default@liferay.com                 | 20096
-  20123 | test@liferay.com                    | test
   20382 | default-service-account@liferay.com | default-service-account
+  20123 | test@liferay.com                    | test
+(3 rows)
 ```
 
 Tabuľka sa volá `user_` s podčiarkovníkom, lebo `user` je v SQL rezervované slovo. Naše tabuľky (`demo_task`) tu zatiaľ nie sú. Vzniknú až po nasadení modulu `task-service` v [kapitole 04](04_build_a_deploy_modulov.md).
@@ -188,8 +195,8 @@ Z IntelliJ (Database tool) alebo DBeaveru sa pripojíš na `localhost:5433`, DB 
 - `docker compose logs liferay` – to, čo Liferay vypisuje na konzolu (najpraktickejšie)
 - V kontajneri `/opt/liferay/logs/liferay.<dátum>.log` – rovnaký obsah ako súbor
 
-```bash
-MSYS_NO_PATHCONV=1 docker compose exec -T liferay ls /opt/liferay/logs
+```powershell
+docker compose exec -T liferay ls /opt/liferay/logs
 ```
 
 ```
@@ -198,11 +205,11 @@ liferay.2026-10-04.log
 liferay.2026-10-04.xml
 ```
 
-`MSYS_NO_PATHCONV=1` je potrebné v Git Bash na Windows. Bez neho by Git Bash prepísal `/opt/...` na Windows cestu.
+`ls` tu beží **vnútri Linux kontajnera**, preto je to linuxový príkaz a cesta `/opt/...`. PowerShell cestu nemení (na rozdiel od Git Bash, kde bolo treba `MSYS_NO_PATHCONV=1`).
 
 ### 9. Zastavenie a upratovanie
 
-```bash
+```powershell
 docker compose stop        # zastaví, dáta zostanú (ďalší štart je rýchlejší)
 docker compose start       # znova spustí
 docker compose down        # zmaže kontajnery, dáta (volume) zostanú
@@ -226,7 +233,7 @@ docker compose down -v     # zmaže aj volume = DB aj Liferay data, ďalší št
 └── logs/                         logy
 ```
 
-Mount `./bundles/osgi/modules:/opt/liferay/osgi/modules` v `docker-compose.yml` je kľúčový. Keď v [kapitole 04](04_build_a_deploy_modulov.md) spustíš `./gradlew deploy`, JARy sa skopírujú na tvoj disk do `bundles/osgi/modules` a Liferay ich v kontajneri okamžite uvidí a nainštaluje.
+Mount `./bundles/osgi/modules:/opt/liferay/osgi/modules` v `docker-compose.yml` je kľúčový. Keď v [kapitole 04](04_build_a_deploy_modulov.md) spustíš `.\gradlew deploy`, JARy sa skopírujú na tvoj disk do `bundles/osgi/modules` a Liferay ich v kontajneri okamžite uvidí a nainštaluje.
 
 ---
 
@@ -234,7 +241,7 @@ Mount `./bundles/osgi/modules:/opt/liferay/osgi/modules` v `docker-compose.yml` 
 
 | Liferay | Spring Boot (`spring-boot-tasks`) |
 |---|---|
-| `docker compose up -d`, čakať ~2 min | `./mvnw spring-boot:run`, pár sekúnd |
+| `docker compose up -d`, čakať ~2 min | `.\mvnw spring-boot:run`, pár sekúnd |
 | Port 8080 | Port **8081** (aby mohli bežať naraz) |
 | `portal-ext.properties` / premenné `LIFERAY_*` | `application.yml` / premenné `SPRING_*` (napr. `SPRING_DATASOURCE_URL`) |
 | `Server startup in [...] milliseconds` | `Started SpringBootTasksApplication in ... seconds` |
@@ -256,7 +263,9 @@ Obe platformy podporujú konfiguráciu cez premenné prostredia, čo je dôleži
 | Prihlásenie `test@liferay.com`/`test` nefunguje | DB je z iného behu, kde sa heslo zmenilo | `docker compose down -v` a štart od nuly |
 | V logu chyby o Elasticsearch po veľmi rýchlom reštarte | Sidecar ešte nedobehol alebo zostal starý proces | `docker compose restart liferay` |
 | Pri prvom otvorení stránky v logu `ERROR ... BatchUpdateException ... insert into PortletPreferences ... already exists` | Pri prvom zobrazení sa súbežne inicializuje viac portletov a dva requesty zapisujú to isté (videné aj pri overovaní tejto kapitoly) | Neškodné, nič nerob. Portál funguje normálne. |
-| `psql: ... the input device is not a TTY` | `docker compose exec` bez `-T` v skripte alebo Git Bash | Pridať `-T` |
+| `psql: ... the input device is not a TTY` | `docker compose exec` bez `-T` v skripte alebo pri presmerovanom výstupe (pipe) | Pridať `-T` |
+| `Invoke-WebRequest : A parameter cannot be found that matches parameter name 's'` | Použil si `curl` namiesto `curl.exe` | Písať `curl.exe` ([kapitola 02](02_predpoklady_a_setup.md)) |
+| `grep : The term 'grep' is not recognized ...` | PowerShell nemá `grep` | `Select-String` |
 
 ---
 

@@ -38,9 +38,14 @@ Obe časti sme naozaj zbuildili, spustili a otestovali (pozri [Overenie](#overen
 - Docker Desktop (Liferay potrebuje ~3 GB RAM)
 - JDK 21 (`java -version`)
 - Maven netreba, projekt má `mvnw`. Gradle netreba, workspace má `gradlew`.
+- Príkazy sú pre **Windows PowerShell 5.1** (Windows 11). Skripty `.ps1` potrebujú povolené lokálne skripty (raz):
+  ```powershell
+  Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+  ```
+  Volaj `curl.exe`, nie `curl` (v PowerShell 5.1 je `curl` alias na `Invoke-WebRequest`). Pre Linux/macOS ostali pôvodné `gogo.sh` a `create-demo-page.sh`.
 - **Globálne Gradle init skripty:** ak máš v `~/.gradle/init.d/` init skript, ktorý pridáva nedostupný interný repozitár, build workspace padne. Riešenie bez zásahu do globálnej konfigurácie je oddelený Gradle home:
-  ```bash
-  export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo   # PowerShell: $env:GRADLE_USER_HOME="$HOME\.gradle-liferay-demo"
+  ```powershell
+  $env:GRADLE_USER_HOME = "$HOME\.gradle-liferay-demo"
   ```
 
 ---
@@ -52,8 +57,8 @@ Obe časti sme naozaj zbuildili, spustili a otestovali (pozri [Overenie](#overen
 ```
 liferay-workspace/
 ├── docker-compose.yml          Liferay CE GA132 + PostgreSQL 16
-├── gogo.sh                     Gogo príkaz cez telnet v kontajneri
-├── create-demo-page.sh         Vytvorí widget stránku s portletom (JSON WS)
+├── gogo.ps1 / gogo.sh          Gogo príkaz cez telnet v kontajneri
+├── create-demo-page.ps1 / .sh  Vytvorí widget stránku s portletom (JSON WS)
 ├── build.gradle                Spoločná konfigurácia unit testov (JUnit 5 + Mockito)
 ├── settings.gradle             Liferay Workspace plugin 17.1.11
 ├── gradle.properties           liferay.workspace.product=portal-7.4-ga132
@@ -70,16 +75,16 @@ liferay-workspace/
 
 ### Spustenie
 
-```bash
+```powershell
 cd liferay-workspace
-export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo   # viď Predpoklady
+$env:GRADLE_USER_HOME = "$HOME\.gradle-liferay-demo"   # viď Predpoklady
 
 docker compose up -d                 # prvý štart cca 2 min, sleduj: docker compose logs -f liferay
                                      # hotovo pri "Server startup in [...] milliseconds"
-./gradlew test                       # unit testy (15)
-./gradlew deploy                     # JARy → ./bundles/osgi/modules (namountované do kontajnera = hot deploy)
-./gogo.sh "lb com.example"           # všetkých 7 bundlov musí byť Active
-./create-demo-page.sh                # stránka http://localhost:8080/web/guest/task-demo s portletom
+.\gradlew test                       # unit testy (15)
+.\gradlew deploy                     # JARy → .\bundles\osgi\modules (namountované do kontajnera = hot deploy)
+.\gogo.ps1 "lb com.example"          # všetkých 7 bundlov musí byť Active
+.\create-demo-page.ps1               # stránka http://localhost:8080/web/guest/task-demo s portletom
 ```
 
 Prihlásenie: `test@liferay.com` / `test` (setup wizard je vypnutý cez env premenné `LIFERAY_*` v `docker-compose.yml`).
@@ -88,8 +93,8 @@ Prihlásenie: `test@liferay.com` / `test` (setup wizard je vypnutý cez env prem
 
 `modules/task/task-service/service.xml` definuje entitu `Task` (namespace `DEMO` → tabuľka `DEMO_Task`) s finderom `Done` (a `GroupId` pre stránkovanie podľa site).
 
-```bash
-./gradlew :modules:task:task-service:buildService
+```powershell
+.\gradlew :modules:task:task-service:buildService
 ```
 
 **Čo Service Builder vygeneruje a kam patrí vlastný kód:**
@@ -127,7 +132,7 @@ Kľúčové vlastnosti:
 - `greeting-impl`: `DefaultGreetingService` (`service.ranking=100`) + `GreetingCommand` (Gogo príkaz `greeting:hello`, `greeting:all`).
 - `greeting-impl-alt`: `FriendlyGreetingService` (`service.ranking=200`).
 
-**Manifesty** (vygeneroval bnd, overené cez `unzip -p ... META-INF/MANIFEST.MF`):
+**Manifesty** (vygeneroval bnd, overené cez `tar -xOf bundles\osgi\modules\<bundle>.jar META-INF/MANIFEST.MF`):
 ```
 greeting-api:   Export-Package: com.example.greeting.api;version="1.0.0"
 greeting-impl:  Import-Package: com.example.greeting.api;version="1.0",java.lang,...
@@ -139,28 +144,28 @@ greeting-impl:  Import-Package: com.example.greeting.api;version="1.0",java.lang
 
 **Dynamický výber služby** (reálny výstup):
 ```
-$ ./gogo.sh "greeting:hello Erich"
+PS> .\gogo.ps1 "greeting:hello Erich"
 Ahoj Erich, vitaj v OSGi!                 ← FriendlyGreetingService (ranking 200)
-$ ./gogo.sh "greeting:all Erich"
+PS> .\gogo.ps1 "greeting:all Erich"
 FriendlyGreetingService: Ahoj Erich, vitaj v OSGi!
 DefaultGreetingService: Hello, Erich!
-$ ./gogo.sh "stop <id greeting-impl-alt>"
-$ ./gogo.sh "greeting:hello Erich"
+PS> .\gogo.ps1 "stop <id greeting-impl-alt>"
+PS> .\gogo.ps1 "greeting:hello Erich"
 Hello, Erich!                             ← za behu prepnuté, bez reštartu
-$ ./gogo.sh "start <id>"  →  znova "Ahoj Erich..."
+PS> .\gogo.ps1 "start <id>"  →  znova "Ahoj Erich..."
 ```
 Funguje to vďaka `@Reference(policy = DYNAMIC, policyOption = GREEDY)`:
 - `STATIC` by komponent pri zmene reštartoval.
 - `RELUCTANT` by novú službu s vyšším rankingom ignoroval.
 
 **Ďalšie Gogo príkazy:**
-```bash
-./gogo.sh "lb com.example"                                      # zoznam bundlov + stav
-./gogo.sh "diag <id>"                                           # prečo bundle nie je resolved (chýbajúci import)
-./gogo.sh "headers <id>"                                        # MANIFEST
-./gogo.sh "services com.example.greeting.api.GreetingService"   # kto službu registruje a kto ju používa
-./gogo.sh "scr:info com.example.greeting.impl.GreetingCommand"  # stav DS komponentu a jeho referencií
-./gogo.sh "scr:list"                                            # všetky DS komponenty
+```powershell
+.\gogo.ps1 "lb com.example"                                      # zoznam bundlov + stav
+.\gogo.ps1 "diag <id>"                                           # prečo bundle nie je resolved (chýbajúci import)
+.\gogo.ps1 "headers <id>"                                        # MANIFEST
+.\gogo.ps1 "services com.example.greeting.api.GreetingService"   # kto službu registruje a kto ju používa
+.\gogo.ps1 "scr:info com.example.greeting.impl.GreetingCommand"  # stav DS komponentu a jeho referencií
+.\gogo.ps1 "scr:list"                                            # všetky DS komponenty
 ```
 
 ### 1.3 Portlet (MVCPortlet)
@@ -185,12 +190,17 @@ Funguje to vďaka `@Reference(policy = DYNAMIC, policyOption = GREEDY)`:
 
 `modules/task-rest`: `TaskRestApplication` je komponent JAX-RS Whiteboardu.
 
-```bash
-curl -u test@liferay.com:test "http://localhost:8080/o/tasks?groupId=20117"
-curl -u test@liferay.com:test -H "Content-Type: application/json" -d '{"title":"Task z REST"}' "http://localhost:8080/o/tasks?groupId=20117"
-curl -u test@liferay.com:test -X PATCH http://localhost:8080/o/tasks/1/toggle
+```powershell
+curl.exe -u test@liferay.com:test "http://localhost:8080/o/tasks?groupId=20117"
+
+# JSON zo súboru: PowerShell 5.1 by úvodzovky v -d '{...}' zahodil a diakritika by nemusela prísť v UTF-8
+[IO.File]::WriteAllText("$PWD\task.json", '{"title":"Task z REST"}')
+curl.exe -u test@liferay.com:test -H "Content-Type: application/json" --data-binary "@task.json" "http://localhost:8080/o/tasks?groupId=20117"
+Remove-Item task.json
+
+curl.exe -u test@liferay.com:test -X PATCH http://localhost:8080/o/tasks/1/toggle
 ```
-(`groupId` site Guest zistíš cez `./create-demo-page.sh`, ktorý ho vypíše.)
+(`groupId` site Guest zistíš cez `.\create-demo-page.ps1`, ktorý ho vypíše.)
 
 **Prečo JAX-RS a nie REST Builder:** stačí jedna trieda a jeden modul. REST Builder potrebuje OpenAPI YAML, generovanie a dva moduly (api + impl). Na demo je to zbytočná réžia. REST Builder sa oplatí pri produkčnom headless API (`/o/headless-*`): generuje DTO, OpenAPI, GraphQL, stránkovanie, filtre, batch a export/import a dodržiava Liferay konvencie (OAuth2 scopes).
 
@@ -201,7 +211,7 @@ curl -u test@liferay.com:test -X PATCH http://localhost:8080/o/tasks/1/toggle
 - `postgres:16` (DB `lportal`, port **5433** na hoste, aby nekolidoval s lokálnym Postgresom).
 - `liferay/portal:7.4.3.132-ga132`: konfigurácia cez `LIFERAY_*` env premenné (prevod `portal-ext.properties`: `.` → `_PERIOD_`, veľké písmeno → `_UPPERCASE<X>`).
 - `./bundles/osgi/modules` je namountované do `/opt/liferay/osgi/modules`. Kopíruje tam `gradlew deploy` a Liferay (File Install) bundly hneď nasadí.
-- Gogo shell počúva len na `localhost:11311` vnútri kontajnera, preto `gogo.sh` používa `docker compose exec ... telnet`.
+- Gogo shell počúva len na `localhost:11311` vnútri kontajnera, preto `gogo.ps1` používa `docker compose exec ... telnet`.
 
 ---
 
@@ -231,10 +241,10 @@ resources/
 
 ### Spustenie
 
-```bash
+```powershell
 cd spring-boot-tasks
-./mvnw test                 # 42 testov, Testcontainers si spustia vlastný postgres:16 (beží Docker)
-./mvnw spring-boot:run      # port 8081, DB = Liferay PostgreSQL z docker-compose (localhost:5433/lportal)
+.\mvnw test                 # 42 testov, Testcontainers si spustia vlastný postgres:16 (beží Docker)
+.\mvnw spring-boot:run      # port 8081, DB = Liferay PostgreSQL z docker-compose (localhost:5433/lportal)
 ```
 
 - Swagger UI: http://localhost:8081/swagger-ui.html, OpenAPI JSON: http://localhost:8081/v3/api-docs
@@ -401,15 +411,15 @@ Overené na reálnych dátach: úlohy vytvorené v Liferay cez portlet a JAX-RS 
 
 | Čo | Ako | Výsledok |
 |---|---|---|
-| Build workspace | `./gradlew jar deploy` | všetkých 7 bundlov `Active` (`lb com.example`) |
-| Unit testy Liferay | `./gradlew test` | 15/15 (TaskLocalServiceImpl, GreetingCommand, impl-y, portlet commands) |
+| Build workspace | `.\gradlew jar deploy` | všetkých 7 bundlov `Active` (`lb com.example`) |
+| Unit testy Liferay | `.\gradlew test` | 15/15 (TaskLocalServiceImpl, GreetingCommand, impl-y, portlet commands) |
 | OSGi ranking | `greeting:hello` / `stop` / `start` v Gogo | prepínanie 200 ↔ 100 za behu |
 | Portlet render | `GET /web/guest/task-demo` (prihlásený curl) | tabuľka úloh, „N task(s), showing max 10“ |
 | Portlet action | POST na `actionURL` `/task/add`, `/task/toggle` | úloha vytvorená/prepnutá; prázdny title → „Task title is required.“ |
 | Portlet resource | GET `resourceURL` `/task/json` | JSON pole úloh |
 | EDIT mód | POST `/task/save_preferences` `pageSize=1` | „showing max 1“, vykreslená 1 úloha |
 | JAX-RS | curl `/o/tasks` GET/POST/PATCH | 200/201/400/404; anonym → 403 |
-| Spring testy | `./mvnw test` | 42/42 (unit + Testcontainers + security) |
+| Spring testy | `.\mvnw test` | 42/42 (unit + Testcontainers + security) |
 | Spring proti Liferay DB | `spring-boot:run` + curl | V1+V2 aplikované, Liferay úlohy 1, 2 importované, nová ID 3 |
 | Swagger | `/swagger-ui.html`, `/v3/api-docs` | 200 |
 
@@ -421,12 +431,12 @@ Overené na reálnych dátach: úlohy vytvorené v Liferay cez portlet a JAX-RS 
 - **Unit testy Liferay kódu mimo portálu:** potrebujú `--add-opens java.base/java.lang.invoke` (kvôli `StringBundler`) a `PropsUtil.setProps(mock)` pre `ParamUtil`.
 - **Liferay JSON serializuje `long` ako string**, Jackson ako číslo, čo je potenciálny breaking change pre klientov.
 - **UTC:** Liferay ukladá časy v GMT, Spring v lokálnom čase. Bez `Instant` + `hibernate.jdbc.time_zone=UTC` vznikne posun.
-- **`add-layout` cez JSON WS:** jednoduchší variant padal na `LayoutFriendlyURLException`, variant s mapami a `typeSettings` funguje (`create-demo-page.sh`).
+- **`add-layout` cez JSON WS:** jednoduchší variant padal na `LayoutFriendlyURLException`, variant s mapami a `typeSettings` funguje (`create-demo-page.ps1`).
 
 ---
 
 ## Upratovanie
 
-```bash
-cd liferay-workspace && docker compose down -v    # -v zmaže aj DB a Liferay data volume
+```powershell
+cd liferay-workspace; docker compose down -v    # -v zmaže aj DB a Liferay data volume
 ```

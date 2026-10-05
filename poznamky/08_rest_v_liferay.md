@@ -20,7 +20,7 @@
 | **Headless API** (vstavané) | Liferay vlastné REST API na `/o/headless-*` (používatelia, obsah, dokumenty, sites…) | Práca s dátami portálu. Prehliadač API: `http://localhost:8080/o/api` |
 | **REST Builder** | Generátor: z OpenAPI YAML vygeneruje JAX-RS resource, DTO, GraphQL, stránkovanie, filtre, batch | „Produkčné“ API vlastných entít v Liferay štýle |
 | **JAX-RS Whiteboard** (ručne) | Jedna OSGi komponenta `extends javax.ws.rs.core.Application` s `@GET`, `@POST`… | Jednoduché vlastné API, **toto používa demo** |
-| JSON Web Services (staršie) | Automaticky z remote servisov Service Buildera na `/api/jsonws` | Legacy, používa ho `create-demo-page.sh` |
+| JSON Web Services (staršie) | Automaticky z remote servisov Service Buildera na `/api/jsonws` | Legacy, používa ho `create-demo-page.ps1` |
 
 **Prečo demo nepoužíva REST Builder:** REST Builder potrebuje OpenAPI YAML, dva ďalšie moduly (`*-rest-api`, `*-rest-impl`) a generovanie. Pre ukážku je to zbytočne veľa. JAX-RS komponent je jedna trieda, ktorej princíp je takmer rovnaký ako pri Spring `@RestController`. Na pohovore stačí vedieť, že REST Builder existuje a čo generuje.
 
@@ -46,18 +46,20 @@ Je to ten istý princíp ako portlet (`service = Portlet.class`) v [kapitole 07]
 
 ## Krok po kroku
 
-Premenné, nech sú príkazy kratšie (Git Bash):
+Premenné, nech sú príkazy kratšie (PowerShell):
 
-```bash
-U=test@liferay.com:test
-B=http://localhost:8080/o/tasks
-G=20117   # groupId site Guest, zistíš: docker compose exec -T postgres psql -U liferay -d lportal -tAc "select groupid from group_ where friendlyurl='/guest'"
+```powershell
+$U = "test@liferay.com:test"
+$B = "http://localhost:8080/o/tasks"
+$G = 20117   # groupId site Guest, zistíš: docker compose exec -T postgres psql -U liferay -d lportal -tAc "select groupid from group_ where friendlyurl='/guest'"
 ```
+
+> V PowerShelli píš `"${B}?..."`, nie `"$B?..."`. Znak `?` môže byť súčasťou názvu premennej, takže `"$B?groupId"` hľadá premennú `B?` a curl vráti `HTTP 000` (overené).
 
 ### 1. Bez prihlásenia: 403
 
-```bash
-curl -s -o /dev/null -w 'HTTP %{http_code}\n' "$B?groupId=$G"
+```powershell
+curl.exe -s -o NUL -w 'HTTP %{http_code}\n' "${B}?groupId=$G"
 ```
 
 ```
@@ -68,8 +70,8 @@ Telo odpovede je HTML stránka s presmerovaním na `/c`, nie JSON. Zlé heslo (`
 
 ### 2. Zoznam úloh (GET)
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -u $U "$B?groupId=$G"
+```powershell
+curl.exe -s -w ' HTTP %{http_code}\n' -u $U "${B}?groupId=$G"
 ```
 
 ```
@@ -80,8 +82,8 @@ Parametre:
 - `size=2` – max. počet (predvolene 20),
 - `done=true|false` – filter podľa stavu.
 
-```bash
-curl -s -u $U "$B?groupId=$G&size=2"
+```powershell
+curl.exe -s -u $U "${B}?groupId=$G&size=2"
 ```
 
 ```
@@ -92,13 +94,13 @@ Bez `groupId` dostaneš prázdne pole `[]`, lebo `groupId` je potom 0 a v site 0
 
 ### 3. Vytvor úlohu (POST)
 
-JSON s diakritikou posielaj **zo súboru**. V Git Bash na Windows `curl -d '{"title":"Kúpiť"}'` pri overovaní neposlal UTF-8 a v DB vzniklo `K�pit`:
+JSON posielaj **zo súboru**. Na Windows sa argumenty natívnych programov z konzoly neposielajú spoľahlivo v UTF-8: `curl -d '{"title":"Kúpiť"}'` pri overovaní uložil do DB `K�pit`. Windows PowerShell 5.1 navyše z argumentov natívnych programov odstraňuje úvodzovky, takže by prišiel nevalidný JSON. `WriteAllText` zapíše súbor v UTF-8 bez BOM. `@` musí byť v úvodzovkách, inak ho PowerShell berie ako splatting:
 
-```bash
-printf '{"title":"Kúpiť chlieb"}' > task.json
-curl -s -w ' HTTP %{http_code}\n' -u $U -H 'Content-Type: application/json' \
-  --data-binary @task.json "$B?groupId=$G"
-rm task.json
+```powershell
+[IO.File]::WriteAllText("$PWD\task.json", '{"title":"Kúpiť chlieb"}')
+curl.exe -s -w ' HTTP %{http_code}\n' -u $U -H 'Content-Type: application/json' `
+  --data-binary "@task.json" "${B}?groupId=$G"
+Remove-Item task.json
 ```
 
 ```
@@ -107,8 +109,10 @@ rm task.json
 
 Prázdny title:
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -u $U -H 'Content-Type: application/json' -d '{"title":"   "}' "$B?groupId=$G"
+```powershell
+[IO.File]::WriteAllText("$PWD\task.json", '{"title":"   "}')
+curl.exe -s -w ' HTTP %{http_code}\n' -u $U -H 'Content-Type: application/json' --data-binary "@task.json" "${B}?groupId=$G"
+Remove-Item task.json
 ```
 
 ```
@@ -119,8 +123,8 @@ Telo je obyčajný text, nie JSON.
 
 ### 4. Prepni stav (PATCH)
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -u $U -X PATCH "$B/1/toggle"
+```powershell
+curl.exe -s -w ' HTTP %{http_code}\n' -u $U -X PATCH "$B/1/toggle"
 ```
 
 ```
@@ -129,8 +133,8 @@ curl -s -w ' HTTP %{http_code}\n' -u $U -X PATCH "$B/1/toggle"
 
 Neexistujúce ID:
 
-```bash
-curl -s -o /dev/null -w 'HTTP %{http_code}\n' -u $U -X PATCH "$B/999/toggle"
+```powershell
+curl.exe -s -o NUL -w 'HTTP %{http_code}\n' -u $U -X PATCH "$B/999/toggle"
 ```
 
 ```
@@ -139,8 +143,8 @@ HTTP 404
 
 ### 5. Filter `done`
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -u $U "$B?groupId=$G&done=true"
+```powershell
+curl.exe -s -w ' HTTP %{http_code}\n' -u $U "${B}?groupId=$G&done=true"
 ```
 
 ```
@@ -151,8 +155,8 @@ curl -s -w ' HTTP %{http_code}\n' -u $U "$B?groupId=$G&done=true"
 
 ### 6. Nevalidný JSON: 200 s prázdnym telom (!)
 
-```bash
-curl -s -i -u $U -H 'Content-Type: application/json' -d 'nie json' "$B?groupId=$G" | head -1
+```powershell
+curl.exe -s -i -u $U -H 'Content-Type: application/json' -d 'nie json' "${B}?groupId=$G" | Select-Object -First 1
 ```
 
 ```
@@ -175,8 +179,8 @@ Liferay má REST API aj pre vlastné dáta. Interaktívny prehliadač (podobný 
 
 Príklad: aktuálny používateľ (použité aj v [kapitole 03](03_spustenie_liferay.md)):
 
-```bash
-curl -s -u $U http://localhost:8080/o/headless-admin-user/v1.0/my-user-account | grep -E '"(emailAddress|alternateName)"'
+```powershell
+curl.exe -s -u $U http://localhost:8080/o/headless-admin-user/v1.0/my-user-account | Select-String '"(emailAddress|alternateName)"'
 ```
 
 ```
@@ -316,9 +320,9 @@ public class TaskController {
 | Príznak | Príčina | Riešenie |
 |---|---|---|
 | `403` aj s menom a heslom | Zlé heslo, alebo aplikácia vyžaduje OAuth2 scope | Over heslo. Pre demo `liferay.oauth2=false`, v reále OAuth2 aplikácia v Control Paneli |
-| `404` na `/o/tasks` | Bundle `task-rest` nebeží | `./gogo.sh "lb task-rest"`, `scr:info com.example.task.rest.application.TaskRestApplication` |
+| `404` na `/o/tasks` | Bundle `task-rest` nebeží | `.\gogo.ps1 "lb task-rest"`, `scr:info com.example.task.rest.application.TaskRestApplication` |
 | Prázdne pole `[]` | Chýba alebo je zlý `groupId` | Pridaj `?groupId=...` (ID site) |
-| Diakritika `K�pit` v DB | `curl -d` v Git Bash na Windows neposlal UTF-8 | JSON do súboru + `--data-binary @task.json` |
+| Diakritika `K�pit` v DB | `curl -d` z konzoly na Windows neposlal UTF-8 | JSON do súboru (`[IO.File]::WriteAllText`) + `--data-binary "@task.json"` |
 | `200` s prázdnym telom | Nezachytená výnimka v resource metóde | Pozri log Liferay. V kóde chytať výnimky alebo pridať JAX-RS `ExceptionMapper` |
 | `415 Unsupported Media Type` pri POST | Chýba `Content-Type: application/json` | Pridaj hlavičku |
 

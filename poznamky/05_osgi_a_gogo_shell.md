@@ -146,28 +146,30 @@ INSTALLED --(všetky importy nájdené)--> RESOLVED --start--> ACTIVE
 
 ## Krok po kroku: Gogo shell
 
-**Predpoklad:** Liferay beží a moduly sú nasadené ([kapitola 04](04_build_a_deploy_modulov.md)). Príkazy spúšťaj z `liferay-workspace`.
+**Predpoklad:** Liferay beží a moduly sú nasadené ([kapitola 04](04_build_a_deploy_modulov.md)). Príkazy sú pre **PowerShell**, spúšťaj ich z `liferay-workspace`. Na spúšťanie `.ps1` skriptov treba povolenú execution policy ([kapitola 02](02_predpoklady_a_setup.md)).
 
 ### Ako sa do Gogo shellu dostaneš
 
 Gogo shell je konzola do OSGi kontajnera. V Liferay počúva **len vnútri kontajnera** na `localhost:11311` (telnet), zvonku nie je dostupný. Máš tri možnosti:
 
-1. **`./gogo.sh "<príkaz>"`** – skript v repe pošle príkaz cez telnet vnútri kontajnera a vypíše výsledok. Používame ho v celej kapitole.
+1. **`.\gogo.ps1 "<príkaz>"`** – skript v repe pošle príkaz cez telnet vnútri kontajnera a vypíše výsledok. Používame ho v celej kapitole.
 2. **V prehliadači:** Control Panel → Gogo Shell (prihlásený ako admin).
 3. **Interaktívne:** `docker compose exec liferay telnet localhost 11311` (koniec cez `disconnect`).
 
-Ako funguje [`gogo.sh`](../liferay-workspace/gogo.sh):
+Ako funguje [`gogo.ps1`](../liferay-workspace/gogo.ps1) (jadro skriptu):
 
-```sh
-docker compose exec -T liferay sh -c "(echo '$*'; sleep 2; echo 'disconnect'; sleep 1; echo y) | telnet localhost 11311"
+```powershell
+$command = $args -join ' '
+$telnet = "(echo '$command'; sleep 2; echo 'disconnect'; sleep 1; echo y) | telnet localhost 11311 2>/dev/null"
+docker compose -f "$PSScriptRoot\docker-compose.yml" exec -T liferay sh -c $telnet
 ```
 
-Pošle príkaz, počká 2 sekundy na výstup a odpojí sa. Preto každé volanie trvá ~3 s. Výstup začína `g!`, čo je prompt Gogo shellu.
+Reťazec `$telnet` je shell príkaz, ktorý beží **vnútri Linux kontajnera** (preto `sh`, `sleep`, `/dev/null`). Skript pošle príkaz, počká 2 sekundy na výstup a odpojí sa. Preto každé volanie trvá ~3 s. Z výstupu potom odfiltruje úvodný banner a hlášky o odpojení, takže výstup začína `g!`, čo je prompt Gogo shellu. Vďaka `$PSScriptRoot` funguje skript z ľubovoľného priečinka.
 
 ### 1. `lb`: zoznam bundlov
 
-```bash
-./gogo.sh "lb com.example"
+```powershell
+.\gogo.ps1 "lb com.example"
 ```
 
 ```
@@ -188,8 +190,8 @@ g! START LEVEL 20
 
 ### 2. `services`: kto čo ponúka na nástenke
 
-```bash
-./gogo.sh "services com.example.greeting.api.GreetingService"
+```powershell
+.\gogo.ps1 "services com.example.greeting.api.GreetingService"
 ```
 
 ```
@@ -212,16 +214,16 @@ Ako to čítať:
 
 Modul `greeting-impl` obsahuje [`GreetingCommand`](../liferay-workspace/modules/greeting-impl/src/main/java/com/example/greeting/impl/GreetingCommand.java), komponent, ktorý sa zaregistruje ako Gogo príkaz (vlastnosti `osgi.command.scope=greeting` a `osgi.command.function=hello,all`):
 
-```bash
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
 g! Ahoj Jano, vitaj v OSGi!
 ```
 
-```bash
-./gogo.sh "greeting:all Jano"
+```powershell
+.\gogo.ps1 "greeting:all Jano"
 ```
 
 ```
@@ -236,25 +238,25 @@ FriendlyGreetingService: Ahoj Jano, vitaj v OSGi!
 
 Zastav bundle s rankingom 200 (ID si vezmi z `lb`):
 
-```bash
-./gogo.sh "stop 1398"
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "stop 1398"
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
 g! Hello, Jano!
 ```
 
-```bash
-./gogo.sh "greeting:all Jano"
+```powershell
+.\gogo.ps1 "greeting:all Jano"
 ```
 
 ```
 g! DefaultGreetingService: Hello, Jano!
 ```
 
-```bash
-./gogo.sh "lb greeting"
+```powershell
+.\gogo.ps1 "lb greeting"
 ```
 
 ```
@@ -269,9 +271,9 @@ Bundle je **Resolved**: závislosti má v poriadku, ale nebeží. Jeho služba z
 
 Spusti ho znova:
 
-```bash
-./gogo.sh "start 1398"
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "start 1398"
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
@@ -282,8 +284,8 @@ Toto je jadro „dynamických služieb“. Žiadny reštart, konzument sa prisp�
 
 ### 5. `scr:info`: pozri sa dovnútra komponentu
 
-```bash
-./gogo.sh "scr:info com.example.greeting.impl.GreetingCommand"
+```powershell
+.\gogo.ps1 "scr:info com.example.greeting.impl.GreetingCommand"
 ```
 
 Výstup (skrátený):
@@ -317,8 +319,8 @@ Najužitočnejší príkaz pri ladení, keď „služba nefunguje“:
 
 Prehľad všetkých komponentov v bundli:
 
-```bash
-./gogo.sh "scr:list 1393"
+```powershell
+.\gogo.ps1 "scr:list 1393"
 ```
 
 ```
@@ -332,10 +334,10 @@ com.example.greeting.impl.DefaultGreetingService in bundle 1,393 (com.example.gr
 
 Najčastejší problém v praxi: bundle zostane v stave `Installed`. Nasimulujeme ho tak, že **odoberieme API bundle**, od ktorého implementácie závisia:
 
-```bash
-mv bundles/osgi/modules/com.example.greeting.api.jar /tmp/
+```powershell
+Move-Item bundles\osgi\modules\com.example.greeting.api.jar $env:TEMP\
 # počkaj ~20 s
-./gogo.sh "lb greeting"
+.\gogo.ps1 "lb greeting"
 ```
 
 ```
@@ -347,8 +349,8 @@ g! START LEVEL 20
 
 Obe implementácie spadli do `Installed`. Prečo?
 
-```bash
-./gogo.sh "diag 1393"
+```powershell
+.\gogo.ps1 "diag 1393"
 ```
 
 ```
@@ -365,8 +367,8 @@ BundleException: Could not resolve module: com.example.greeting.impl [1393]
 
 A Gogo príkaz zmizol, lebo jeho komponent nebeží:
 
-```bash
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
@@ -375,10 +377,10 @@ g! gogo: CommandNotFoundException: Command not found: greeting:hello
 
 **Oprava:** vráť API bundle.
 
-```bash
-mv /tmp/com.example.greeting.api.jar bundles/osgi/modules/
+```powershell
+Move-Item $env:TEMP\com.example.greeting.api.jar bundles\osgi\modules\
 # počkaj ~20 s
-./gogo.sh "lb greeting"
+.\gogo.ps1 "lb greeting"
 ```
 
 ```
@@ -454,7 +456,8 @@ Posledný riadok je dôležitý rozdiel. V OSGi chýbajúca závislosť znamená
 | Bundle je `Active`, ale služba nie je na nástenke | Komponent má `UNSATISFIED REFERENCE` | `scr:info <trieda>` → sekcia References |
 | Po nasadení novej implementácie konzument stále používa starú | Referencia je `STATIC`/`RELUCTANT` (predvolené) | `policy = DYNAMIC, policyOption = GREEDY`, alebo reštart bundlu konzumenta |
 | `CommandNotFoundException` pre vlastný Gogo príkaz | Bundle alebo komponent s príkazom nebeží | `lb`, `scr:info` |
-| `gogo.sh` nevypíše nič | Kontajner nebeží alebo príkaz trvá dlhšie ako 2 s | `docker compose ps`, prípadne zvýšiť `sleep 2` v skripte |
+| `gogo.ps1` nevypíše nič | Kontajner nebeží alebo príkaz trvá dlhšie ako 2 s | `docker compose ps`, prípadne zvýšiť `sleep 2` v skripte |
+| `gogo.ps1 cannot be loaded because running scripts is disabled` | Execution policy `Restricted` (predvolená vo Windows) | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` ([kapitola 02](02_predpoklady_a_setup.md)) |
 | `Cannot coerce headers(Token) to any of [(Bundle[])]` | Niektoré príkazy (napr. `headers`) chcú objekt bundle, nie číslo | Použi `bundle <id>` alebo `diag`/`lb` |
 
 ---

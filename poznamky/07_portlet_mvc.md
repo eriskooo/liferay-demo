@@ -88,9 +88,9 @@ Nastavenia z EDIT módu sa ukladajú do **PortletPreferences**: kľúč-hodnota,
 
 Portlet treba pridať na stránku. V UI by si to urobil cez *Site Builder → Pages → Add Page* a pretiahnutie widgetu „Tasks“ (kategória *Sample*). Skript to urobí za teba cez Liferay JSON web služby:
 
-```bash
+```powershell
 cd liferay-workspace
-./create-demo-page.sh
+.\create-demo-page.ps1
 ```
 
 ```
@@ -98,7 +98,7 @@ Guest groupId=20117
 Hotovo: http://localhost:8080/web/guest/task-demo
 ```
 
-Ak stránka už existuje, skript vypíše `Stránku se nepodařilo vytvořit (už existuje? ...)`. To je v poriadku, pokračuj.
+Ak stránka už existuje, skript vypíše `Stránku sa nepodarilo vytvoriť (už existuje? ...)`. To je v poriadku, pokračuj. Ak PowerShell odmietne skript spustiť („running scripts is disabled“), nastav execution policy podľa [kapitoly 02](02_predpoklady_a_setup.md).
 
 ### 2. Render fáza: otvor stránku
 
@@ -123,8 +123,9 @@ ID   Title              Done
 
 Overenie z terminálu, stránka je verejná, takže funguje aj bez prihlásenia:
 
-```bash
-curl -s http://localhost:8080/web/guest/task-demo | grep -oE '[0-9]+ task\(s\), showing max [0-9]+'
+```powershell
+curl.exe -s http://localhost:8080/web/guest/task-demo |
+  Select-String '[0-9]+ task\(s\), showing max [0-9]+' | ForEach-Object { $_.Matches.Value }
 ```
 
 ```
@@ -156,8 +157,8 @@ Klikni na **Load JSON (resource request)**. Pod tlačidlom sa zobrazí JSON a **
 
 Z terminálu (resource URL skopírovaná z HTML stránky):
 
-```bash
-curl -s 'http://localhost:8080/task-demo?p_p_id=com_example_task_web_TaskPortlet&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=%2Ftask%2Fjson&p_p_cacheability=cacheLevelPage'
+```powershell
+curl.exe -s 'http://localhost:8080/task-demo?p_p_id=com_example_task_web_TaskPortlet&p_p_lifecycle=2&p_p_state=normal&p_p_mode=view&p_p_resource_id=%2Ftask%2Fjson&p_p_cacheability=cacheLevelPage'
 ```
 
 Výstup (tu ešte pred pridaním úlohy 102):
@@ -179,7 +180,7 @@ Nastavenie platí pre **všetkých** návštevníkov tejto stránky (aj neprihl�
 
 Kde je uložené:
 
-```bash
+```powershell
 docker compose exec -T postgres psql -U liferay -d lportal -c "
   select p.portletid, p.ownertype, p.plid, v.name, v.smallvalue
   from portletpreferences p
@@ -401,7 +402,7 @@ public record TaskProperties(
 
 | Príznak | Príčina | Riešenie |
 |---|---|---|
-| Portlet nie je v ponuke widgetov | Komponent portletu nie je aktívny | `./gogo.sh "scr:info com.example.task.web.portlet.TaskPortlet"` |
+| Portlet nie je v ponuke widgetov | Komponent portletu nie je aktívny | `.\gogo.ps1 "scr:info com.example.task.web.portlet.TaskPortlet"` |
 | Klik na tlačidlo nič neurobí, `HTTP 403`, v logu `did not provide a valid CSRF token` | URL bez `p_auth` (ručne poskladaná) | Generovať URL cez `<portlet:actionURL>` |
 | Action command sa nezavolá | `mvc.command.name` v komponente ≠ `name` v `<portlet:actionURL>`, alebo iné `javax.portlet.name` | Zjednotiť cez konštanty (`TaskPortletKeys`) |
 | Hodnota z formulára je `null`/prázdna | Pole bez namespace (obyčajný `<input name="title">`) | `<aui:input>` alebo `name="<portlet:namespace />title"` |

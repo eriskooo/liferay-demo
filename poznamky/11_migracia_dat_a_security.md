@@ -101,7 +101,7 @@ $$;
 
 Po štarte Spring Boot ([kapitola 10](10_spring_boot_projekt.md)):
 
-```bash
+```powershell
 cd liferay-workspace
 docker compose exec -T postgres psql -U liferay -d lportal -c "\dn"
 ```
@@ -114,8 +114,8 @@ docker compose exec -T postgres psql -U liferay -d lportal -c "\dn"
  tasks  | liferay
 ```
 
-```bash
-docker compose exec -T postgres psql -U liferay -d lportal -c \
+```powershell
+docker compose exec -T postgres psql -U liferay -d lportal -c `
   "select installed_rank, version, description, success from tasks.flyway_schema_history"
 ```
 
@@ -127,8 +127,8 @@ docker compose exec -T postgres psql -U liferay -d lportal -c \
               2 | 2       | import liferay tasks         | t
 ```
 
-```bash
-docker compose exec -T postgres psql -U liferay -d lportal -c \
+```powershell
+docker compose exec -T postgres psql -U liferay -d lportal -c `
   "select id, title, done, create_date, group_id, user_id from tasks.task order by id"
 ```
 
@@ -308,9 +308,9 @@ Mapovanie rolí (návrh pre demo):
 
 Keycloak nie je súčasťou dema. Aj tak sa dá overiť, že security funguje:
 
-```bash
+```powershell
 cd spring-boot-tasks
-./mvnw spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=keycloak --server.port=8082"
+.\mvnw spring-boot:run "-Dspring-boot.run.arguments=--spring.profiles.active=keycloak --server.port=8082"
 ```
 
 V logu:
@@ -325,8 +325,8 @@ Aplikácia naštartuje aj bez Keycloaku, pretože `JwtDecoder` sa inicializuje l
 
 **Bez tokenu:**
 
-```bash
-curl -s -i http://localhost:8082/api/tasks | grep -E "^HTTP|^WWW-Authenticate"
+```powershell
+curl.exe -s -i http://localhost:8082/api/tasks | Select-String '^HTTP|^WWW-Authenticate'
 ```
 
 ```
@@ -336,9 +336,9 @@ WWW-Authenticate: Bearer resource_metadata="http://localhost:8082/.well-known/oa
 
 **Verejné cesty** fungujú:
 
-```bash
-curl -s -o /dev/null -w 'health %{http_code}\n' http://localhost:8082/actuator/health
-curl -s -o /dev/null -w 'api-docs %{http_code}\n' http://localhost:8082/v3/api-docs
+```powershell
+curl.exe -s -o NUL -w 'health %{http_code}\n' http://localhost:8082/actuator/health
+curl.exe -s -o NUL -w 'api-docs %{http_code}\n' http://localhost:8082/v3/api-docs
 ```
 
 ```
@@ -348,8 +348,8 @@ api-docs 200
 
 **S (falošným) tokenom:**
 
-```bash
-curl -s -i -H 'Authorization: Bearer abc.def.ghi' http://localhost:8082/api/tasks | grep "^HTTP"
+```powershell
+curl.exe -s -i -H 'Authorization: Bearer abc.def.ghi' http://localhost:8082/api/tasks | Select-String '^HTTP'
 ```
 
 ```

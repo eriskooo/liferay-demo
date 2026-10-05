@@ -2,7 +2,7 @@
 
 ## Čo sa naučíš
 
-- Čo presne urobí `./gradlew deploy`
+- Čo presne urobí `.\gradlew deploy`
 - Ako funguje hot deploy: JAR sa do bežiaceho portálu dostane bez reštartu
 - Ako overiť, že modul naozaj nabehol (log, Gogo, DB)
 - Ako modul odobrať a znova nasadiť
@@ -19,7 +19,7 @@ Cesta kódu do portálu:
 ```
  modules/greeting-impl/src/...java
         |
-        |  ./gradlew deploy
+        |  .\gradlew deploy
         |    1. compileJava       skompiluje triedy
         |    2. jar               bnd pridá OSGi hlavičky do MANIFEST.MF + OSGI-INF/*.xml
         |    3. deploy            skopíruje JAR do bundles/osgi/modules
@@ -44,17 +44,17 @@ Prečo názov súboru `com.example.greeting.impl.jar`, a nie `greeting-impl.jar`
 
 ## Krok po kroku
 
-Z adresára `liferay-workspace`:
+Príkazy sú pre **PowerShell**, spúšťaj ich z adresára `liferay-workspace`:
 
-```bash
+```powershell
 cd liferay-workspace
-export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo   # ak si to v tomto okne ešte nenastavil
+$env:GRADLE_USER_HOME = "$HOME\.gradle-liferay-demo"   # ak si to v tomto okne ešte nenastavil
 ```
 
 ### 1. Nasaď všetky moduly
 
-```bash
-./gradlew deploy
+```powershell
+.\gradlew deploy
 ```
 
 Očakávaný výstup (skrátený):
@@ -71,26 +71,30 @@ BUILD SUCCESSFUL in 5s
 
 ### 2. Pozri, čo sa skopírovalo
 
-```bash
-ls -la bundles/osgi/modules
+```powershell
+Get-ChildItem bundles\osgi\modules | Format-Table Name, Length, LastWriteTime -AutoSize
 ```
 
+Výstup (stĺpec `LastWriteTime` vynechaný):
+
 ```
--rw-r--r-- 1 lorma 197609  1609 Oct  4 09:02 com.example.greeting.api.jar
--rw-r--r-- 1 lorma 197609  2551 Oct  4 09:02 com.example.greeting.impl.alt.jar
--rw-r--r-- 1 lorma 197609  4786 Oct  4 09:02 com.example.greeting.impl.jar
--rw-r--r-- 1 lorma 197609 18935 Oct  4 09:02 com.example.task.api.jar
--rw-r--r-- 1 lorma 197609  5224 Oct  4 09:02 com.example.task.rest.jar
--rw-r--r-- 1 lorma 197609 41615 Oct  4 09:02 com.example.task.service.jar
--rw-r--r-- 1 lorma 197609 16625 Oct  4 09:02 com.example.task.web.jar
+Name                              Length
+----                              ------
+com.example.greeting.api.jar        1609
+com.example.greeting.impl.alt.jar   2551
+com.example.greeting.impl.jar       4786
+com.example.task.api.jar           18935
+com.example.task.rest.jar           5224
+com.example.task.service.jar       41618
+com.example.task.web.jar           16625
 ```
 
 Všimni si veľkosť: pár kilobajtov. Bundle obsahuje **len vlastný kód**, Liferay knižnice sú `compileOnly` a dodá ich portál.
 
 ### 3. Over v logu, že bundly nabehli
 
-```bash
-docker compose logs liferay --since 2m | grep -E "STARTED|ERROR"
+```powershell
+docker compose logs liferay --since 2m | Select-String 'STARTED|ERROR'
 ```
 
 Očakávaný výstup (do ~10 s po deployi):
@@ -111,8 +115,8 @@ Očakávaný výstup (do ~10 s po deployi):
 
 ### 4. Over stav v Gogo shelli
 
-```bash
-./gogo.sh "lb com.example"
+```powershell
+.\gogo.ps1 "lb com.example"
 ```
 
 ```
@@ -127,13 +131,13 @@ g! START LEVEL 20
  1397|Active     |   10|task-web (1.0.0)|1.0.0
 ```
 
-Všetkých 7 musí byť **Active**. `gogo.sh` podrobne vysvetľuje kapitola 05.
+Všetkých 7 musí byť **Active**. `gogo.ps1` podrobne vysvetľuje kapitola 05. Ak PowerShell hlási, že spúšťanie skriptov je zakázané, nastav execution policy podľa [kapitoly 02](02_predpoklady_a_setup.md).
 
 ### 5. Over, že Service Builder vytvoril tabuľku
 
 Pri štarte bundlu `task-service` Liferay zistí, že tabuľka ešte neexistuje, a vytvorí ju podľa `tables.sql`:
 
-```bash
+```powershell
 docker compose exec -T postgres psql -U liferay -d lportal -c '\d demo_task'
 ```
 
@@ -160,8 +164,8 @@ Index `ix_e1cbfbd` na stĺpci `done` vznikol z `<finder name="Done">` v `service
 
 Najprv zavolaj službu cez Gogo príkaz z modulu `greeting-impl`:
 
-```bash
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
@@ -172,8 +176,8 @@ Odpovedá `greeting-impl-alt`, lebo má vyšší `service.ranking` (200).
 
 **Odober** bundle `greeting-impl-alt`, stačí zmazať JAR:
 
-```bash
-rm bundles/osgi/modules/com.example.greeting.impl.alt.jar
+```powershell
+Remove-Item bundles\osgi\modules\com.example.greeting.impl.alt.jar
 ```
 
 V logu sa do pár sekúnd objaví:
@@ -184,8 +188,8 @@ V logu sa do pár sekúnd objaví:
 
 A služba sa sama prepne na zvyšnú implementáciu (ranking 100):
 
-```bash
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
@@ -194,8 +198,8 @@ g! Hello, Jano!
 
 **Vráť** ho späť, nasadí sa len jeden modul:
 
-```bash
-./gradlew :modules:greeting-impl-alt:deploy
+```powershell
+.\gradlew :modules:greeting-impl-alt:deploy
 ```
 
 ```
@@ -212,8 +216,8 @@ V logu (môže to trvať až ~20 s, File Install priečinok kontroluje periodick
 
 ID je teraz **1398**, nie 1392. Zmazaním sa bundle odinštaloval, takže je to nová inštalácia s novým ID.
 
-```bash
-./gogo.sh "greeting:hello Jano"
+```powershell
+.\gogo.ps1 "greeting:hello Jano"
 ```
 
 ```
@@ -227,7 +231,7 @@ Celý ten čas portál bežal a nikto nič nereštartoval.
 Bežný vývojový cyklus:
 
 1. Zmeníš Java súbor v module.
-2. `./gradlew :modules:<modul>:deploy` (alebo `./gradlew deploy` pre všetky).
+2. `.\gradlew :modules:<modul>:deploy` (alebo `.\gradlew deploy` pre všetky).
 3. File Install zistí zmenený JAR a urobí **update** bundlu (ID zostane rovnaké).
 4. Overíš v logu (`STARTED`) a v prehliadači.
 
@@ -237,9 +241,11 @@ Bežný vývojový cyklus:
 
 Pozri si manifest zbuildeného `greeting-impl`:
 
-```bash
-unzip -p bundles/osgi/modules/com.example.greeting.impl.jar META-INF/MANIFEST.MF
+```powershell
+tar -xOf bundles\osgi\modules\com.example.greeting.impl.jar META-INF/MANIFEST.MF
 ```
+
+`tar.exe` je súčasťou Windows 10/11 a vie čítať aj ZIP (JAR je ZIP). `-O` vypíše súbor na výstup namiesto rozbalenia na disk.
 
 Výstup (skrátený):
 
@@ -278,7 +284,7 @@ Riadky sú zalomené na 72 znakov a pokračujú medzerou na začiatku. To je št
 
 | Liferay | Spring Boot |
 |---|---|
-| `./gradlew deploy` → JAR do `osgi/modules` | `./mvnw package` → jeden fat JAR, `java -jar` |
+| `.\gradlew deploy` → JAR do `osgi/modules` | `.\mvnw package` → jeden fat JAR, `java -jar` |
 | Hot deploy jedného bundlu za behu | Reštart celej aplikácie (vo vývoji pomôže `spring-boot-devtools`) |
 | Malý JAR (len vlastný kód) | Fat JAR desiatky MB (Tomcat, Spring, Hibernate…) |
 | Overenie: `STARTED ...` v logu, `lb` v Gogo | Overenie: `Started ...Application in ... seconds`, `/actuator/health` |
@@ -293,10 +299,10 @@ Hot deploy vyzerá ako výhoda, v praxi sa však produkcia aj tak nasadzuje cel�
 
 | Príznak | Príčina | Riešenie |
 |---|---|---|
-| Po deployi v logu žiadny `STARTED` | Bundle čaká na závislosť (stav `Installed`) | `./gogo.sh "lb com.example"`, potom `diag <id>` ([kapitola 05](05_osgi_a_gogo_shell.md)) |
+| Po deployi v logu žiadny `STARTED` | Bundle čaká na závislosť (stav `Installed`) | `.\gogo.ps1 "lb com.example"`, potom `diag <id>` ([kapitola 05](05_osgi_a_gogo_shell.md)) |
 | `STARTED` je v logu, ale zmena sa neprejavila | Prehliadač má v cache JS/CSS, alebo si nasadil iný modul | Ctrl+F5, skontroluj čas súboru v `bundles/osgi/modules` |
 | `bundles/osgi/modules` je prázdny, hoci deploy prebehol | Liferay sa spúšťa z iného priečinka (napr. `docker compose` z iného adresára) | `docker compose` vždy spúšťaj v `liferay-workspace` |
-| Bundle je `Active`, ale portlet sa nezobrazuje v ponuke | Komponent portletu nie je aktívny (chýba `@Reference`) | `./gogo.sh "scr:info <trieda>"`, [kapitola 07](07_portlet_mvc.md) |
+| Bundle je `Active`, ale portlet sa nezobrazuje v ponuke | Komponent portletu nie je aktívny (chýba `@Reference`) | `.\gogo.ps1 "scr:info <trieda>"`, [kapitola 07](07_portlet_mvc.md) |
 | Tabuľka `demo_task` nevznikla | Bundle `task-service` nenabehol | Over `lb` a log, hľadaj `ERROR` |
 
 ---
@@ -304,7 +310,7 @@ Hot deploy vyzerá ako výhoda, v praxi sa však produkcia aj tak nasadzuje cel�
 ## Otázky na pohovor
 
 **Ako sa v Liferay nasadzuje modul?**
-JAR bundle sa skopíruje do `osgi/modules` (alebo `deploy`) v Liferay home. File Install ho za behu nainštaluje a spustí. Vo workspace to robí `./gradlew deploy` a v produkcii zvyčajne vlastný Docker image s modulmi.
+JAR bundle sa skopíruje do `osgi/modules` (alebo `deploy`) v Liferay home. File Install ho za behu nainštaluje a spustí. Vo workspace to robí `.\gradlew deploy` a v produkcii zvyčajne vlastný Docker image s modulmi.
 
 **Čo je hot deploy a aké má obmedzenia?**
 Výmena jedného bundlu bez reštartu portálu. Obmedzenia: konzumenti s `STATIC` referenciami sa reštartujú, stav v pamäti sa stratí, pri zmene API (exportovaných balíčkov) treba prenasadiť aj závislé bundly. V clusteri treba nasadiť na každý uzol.

@@ -43,7 +43,7 @@ Pri viacerých implementáciách vyhráva najvyšší ranking. `GREEDY` znamená
 Bundle vidí iba importované balíčky, ktoré iný bundle exportuje s vyhovujúcou verziou. Bez nich zostane `Installed`, nie `Resolved`/`Active`. `diag <id>` v Gogo shelli ukáže, čo chýba. V deme `greeting-api` exportuje rozhranie a `greeting-impl` neexportuje nič ([`bnd.bnd`](../liferay-workspace/modules/greeting-impl/bnd.bnd)).
 
 **Ako zistíš, prečo modul nefunguje?**
-Gogo shell: `lb` (je bundle `Active`?), `diag <id>` (chýbajúce importy), `services` (je služba zaregistrovaná?). V deme cez [`gogo.sh`](../liferay-workspace/gogo.sh), lebo Gogo počúva len vnútri kontajnera. Spring obdoba: Actuator (`/actuator/beans`, `/actuator/conditions`).
+Gogo shell: `lb` (je bundle `Active`?), `diag <id>` (chýbajúce importy), `services` (je služba zaregistrovaná?). V deme cez [`gogo.ps1`](../liferay-workspace/gogo.ps1), lebo Gogo počúva len vnútri kontajnera. Spring obdoba: Actuator (`/actuator/beans`, `/actuator/conditions`).
 
 **Čo sa stratí, keď prejdeme z OSGi na Spring Boot?**
 Hot deploy jednotlivých modulov a výmena služieb za behu. Spring kontext je po štarte statický, zmena = nové nasadenie celej aplikácie. Modularitu treba riešiť na úrovni buildu (Maven moduly, JPMS, ArchUnit testy).
@@ -204,7 +204,7 @@ Toto sú **skutočné problémy**, ktoré sa objavili pri stavbe dema. Na pohovo
 
 **7. Vytvorenie stránky cez JSON WS padalo**
 - Problém: jednoduchší variant `add-layout` padal na `LayoutFriendlyURLException`.
-- Riešenie: variant s mapami a `typeSettings` ([`create-demo-page.sh`](../liferay-workspace/create-demo-page.sh)).
+- Riešenie: variant s mapami a `typeSettings` ([`create-demo-page.ps1`](../liferay-workspace/create-demo-page.ps1)).
 - Ponaučenie: staré Liferay API (JSON WS) majú preťažené metódy s rôznym správaním. Lepšie je overiť variant pokusom.
 
 ### Zistenia pri písaní poznámok (overené v kapitolách 06–11)
@@ -227,7 +227,7 @@ Toto sú **skutočné problémy**, ktoré sa objavili pri stavbe dema. Na pohovo
 
 **11. Diakritika rozbitá cez `curl` na Windows**
 - Problém: `curl -d '{"title":"Kúpiť"}'` v Git Bash uložil do DB `K�pit`.
-- Riešenie: JSON zo súboru (`--data-binary @task.json`).
+- Riešenie: JSON zo súboru (`--data-binary "@task.json"`). V PowerShell 5.1 je to nutné aj kvôli úvodzovkám, ktoré sa pri volaní `curl.exe` z argumentu stratia.
 - Ponaučenie: pri migrácii dát vždy kontrolovať kódovanie (UTF-8) celej cesty: klient, HTTP, DB.
 
 ---

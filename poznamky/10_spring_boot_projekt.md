@@ -84,9 +84,9 @@ spring:
 
 ### 1. Spusti aplikáciu
 
-```bash
+```powershell
 cd spring-boot-tasks
-./mvnw spring-boot:run
+.\mvnw spring-boot:run
 ```
 
 Prvý beh stiahne Maven a závislosti. Zaujímavé riadky logu:
@@ -107,9 +107,9 @@ SpringBootTasksApplication : Started SpringBootTasksApplication in 5.9 seconds (
 
 ### 2. Zoznam úloh
 
-```bash
-B=http://localhost:8081/api/tasks
-curl -s "$B"
+```powershell
+$B = "http://localhost:8081/api/tasks"
+curl.exe -s "$B"
 ```
 
 ```json
@@ -123,9 +123,11 @@ To sú **úlohy z Liferay**, ktoré naimportovala Flyway migrácia V2. ID, názv
 
 Filter a stránkovanie:
 
-```bash
-curl -s "$B?done=false&size=2"
+```powershell
+curl.exe -s "${B}?done=false&size=2"
 ```
+
+(`${B}` v zložených zátvorkách, lebo `?` by PowerShell zobral ako súčasť názvu premennej, viď [kapitola 08](08_rest_v_liferay.md).)
 
 ```json
 {"content":[{"id":101,"title":"Zavolať mame","done":false,...},{"id":3,"title":"Kúpiť chlieb","done":false,...}],"page":0,"size":2,"totalElements":3,"totalPages":2}
@@ -135,20 +137,20 @@ Na rozdiel od Liferay REST ([kapitola 08](08_rest_v_liferay.md)) tu filter `done
 
 ### 3. Detail, vytvorenie, toggle
 
-```bash
-curl -s "$B/101"
+```powershell
+curl.exe -s "$B/101"
 ```
 
 ```json
 {"id":101,"title":"Zavolať mame","done":false,"createDate":"2026-10-04T07:11:41.422Z"}
 ```
 
-Vytvorenie (JSON zo súboru kvôli diakritike v Git Bash, rovnako ako v kapitole 08):
+Vytvorenie (JSON zo súboru kvôli diakritike a úvodzovkám, rovnako ako v kapitole 08):
 
-```bash
-printf '{"title":"Prvá úloha v Spring Boot"}' > s.json
-curl -s -i --data-binary @s.json -H 'Content-Type: application/json' "$B" | grep -E "^HTTP|^Location|^\{"
-rm s.json
+```powershell
+[IO.File]::WriteAllText("$PWD\s.json", '{"title":"Prvá úloha v Spring Boot"}')
+curl.exe -s -i --data-binary "@s.json" -H 'Content-Type: application/json' "$B" | Select-String '^HTTP|^Location|^\{'
+Remove-Item s.json
 ```
 
 ```
@@ -159,8 +161,8 @@ Location: /api/tasks/103
 
 `201 Created` + hlavička `Location` je správny REST štýl. ID **103** pokračuje za najvyšším importovaným ID (102). Pozor však, čo sa stane, keď v tom istom čase pridáva úlohy aj Liferay ([kapitola 11](11_migracia_dat_a_security.md)).
 
-```bash
-curl -s -X PATCH "$B/2/toggle"
+```powershell
+curl.exe -s -X PATCH "$B/2/toggle"
 ```
 
 ```json
@@ -169,16 +171,18 @@ curl -s -X PATCH "$B/2/toggle"
 
 ### 4. Chyby: všade `ProblemDetail`
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -H 'Content-Type: application/json' -d '{"title":"  "}' "$B"
+```powershell
+[IO.File]::WriteAllText("$PWD\s.json", '{"title":"  "}')
+curl.exe -s -w ' HTTP %{http_code}\n' -H 'Content-Type: application/json' --data-binary "@s.json" "$B"
+Remove-Item s.json
 ```
 
 ```
 {"detail":"Invalid request content.","instance":"/api/tasks","status":400,"title":"Bad Request"} HTTP 400
 ```
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' -H 'Content-Type: application/json' -d 'nie json' "$B"
+```powershell
+curl.exe -s -w ' HTTP %{http_code}\n' -H 'Content-Type: application/json' -d 'nie json' "$B"
 ```
 
 ```
@@ -187,8 +191,8 @@ curl -s -w ' HTTP %{http_code}\n' -H 'Content-Type: application/json' -d 'nie js
 
 (V Liferay JAX-RS to isté vrátilo `200` s prázdnym telom.)
 
-```bash
-curl -s -w ' HTTP %{http_code}\n' "$B/999"
+```powershell
+curl.exe -s -w ' HTTP %{http_code}\n' "$B/999"
 ```
 
 ```
@@ -203,8 +207,8 @@ V prehliadači otvor <http://localhost:8081/swagger-ui.html> (presmeruje na `/sw
 
 Strojovo čitateľná špecifikácia:
 
-```bash
-curl -s http://localhost:8081/v3/api-docs | head -c 200
+```powershell
+(curl.exe -s http://localhost:8081/v3/api-docs).Substring(0, 200)
 ```
 
 ```
@@ -215,24 +219,24 @@ Z tejto špecifikácie si Angular vie vygenerovať TypeScript klienta (napr. `op
 
 ### 6. Actuator
 
-```bash
-curl -s http://localhost:8081/actuator/health
+```powershell
+curl.exe -s http://localhost:8081/actuator/health
 ```
 
 ```json
 {"groups":["liveness","readiness"],"status":"UP"}
 ```
 
-```bash
-curl -s http://localhost:8081/actuator/flyway | head -c 300
+```powershell
+(curl.exe -s http://localhost:8081/actuator/flyway).Substring(0, 300)
 ```
 
 Ukáže aplikované migrácie (`V1__create_task.sql`, `V2__import_liferay_tasks.sql`, stav `SUCCESS`). `liveness` a `readiness` sú pripravené pre Kubernetes probes. V Liferay sa stav zisťuje z logu a Gogo shellu.
 
 ### 7. Testy
 
-```bash
-./mvnw test
+```powershell
+.\mvnw test
 ```
 
 Beží ~45 s (Testcontainers spustí vlastný PostgreSQL 16 v Dockeri, nezávislý od toho z docker-compose). Výsledok pri overovaní:
@@ -252,14 +256,17 @@ Beží ~45 s (Testcontainers spustí vlastný PostgreSQL 16 v Dockeri, nezávisl
 
 Počty si overíš:
 
-```bash
-for f in target/surefire-reports/TEST-*.xml; do grep -o '<testsuite[^>]*' $f | grep -oE 'name="[^"]*"|tests="[0-9]+"' | tr '\n' ' '; echo; done
+```powershell
+Get-ChildItem target\surefire-reports\TEST-*.xml | ForEach-Object {
+  $s = ([xml](Get-Content $_.FullName -Raw)).testsuite
+  "name=""$($s.name)"" tests=""$($s.tests)"""
+}
 ```
 
 Jedna trieda:
 
-```bash
-./mvnw test -Dtest=TaskServiceTest
+```powershell
+.\mvnw test "-Dtest=TaskServiceTest"
 ```
 
 Ako funguje Testcontainers v projekte ([`TestcontainersConfiguration.java`](../spring-boot-tasks/src/test/java/com/example/tasks/TestcontainersConfiguration.java)):
@@ -355,7 +362,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {   /
 | `Port 8081 was already in use` | Aplikácia už beží v inom okne | Ukonči ju alebo `--server.port=8082` |
 | `Schema-validation: missing table [task]` | Flyway nebežal (iná schéma alebo vypnutý) | Skontroluj `spring.flyway.schemas` a `hibernate.default_schema` |
 | Testy: `Could not find a valid Docker environment` | Docker Desktop nebeží | Spusti Docker |
-| Diakritika rozbitá v DB | `curl -d` v Git Bash na Windows | JSON zo súboru, `--data-binary @s.json` |
+| Diakritika rozbitá v DB | `curl -d` z konzoly na Windows (argumenty nie sú spoľahlivo UTF-8) | JSON zo súboru cez `[IO.File]::WriteAllText`, `--data-binary "@s.json"` |
 | Import z Liferay sa „nezopakuje“ | Flyway V2 beží len raz (je v `flyway_schema_history`) | Je to zámer. Viac v kapitole 11. |
 
 ---

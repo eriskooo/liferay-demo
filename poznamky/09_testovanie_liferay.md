@@ -38,8 +38,8 @@ Z adresára `liferay-workspace` (s nastaveným `GRADLE_USER_HOME`, [kapitola 02]
 
 ### 1. Spusti všetky unit testy
 
-```bash
-./gradlew clean test
+```powershell
+.\gradlew clean test
 ```
 
 Očakávaný koniec výstupu:
@@ -55,8 +55,11 @@ Liferay portál pri tom **nemusí bežať**, testy sú čisté unit testy.
 
 Gradle pri úspechu počty nevypisuje. Zistíš ich z XML reportov:
 
-```bash
-find modules -path '*test-results/test/*.xml' | xargs grep -ho 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"'
+```powershell
+Get-ChildItem modules -Recurse -Filter *.xml |
+  Where-Object FullName -like '*\test-results\test\*' |
+  Select-String 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' |
+  ForEach-Object { $_.Matches.Value }
 ```
 
 ```
@@ -74,8 +77,8 @@ modules/task/task-service/build/reports/tests/test/index.html
 
 ### 3. Spusti jednu testovaciu triedu
 
-```bash
-./gradlew :modules:task:task-service:test --tests '*TaskLocalServiceImplTest'
+```powershell
+.\gradlew :modules:task:task-service:test --tests '*TaskLocalServiceImplTest'
 ```
 
 ```
@@ -226,7 +229,7 @@ Všetky body sú overené v predchádzajúcich kapitolách. Pri migrácii sa z n
 
 | # | Čo overiť | Ako | Očakávané | Kapitola |
 |---|---|---|---|---|
-| 1 | Všetky bundly bežia | `./gogo.sh "lb com.example"` | 7× `Active` | 04 |
+| 1 | Všetky bundly bežia | `.\gogo.ps1 "lb com.example"` | 7× `Active` | 04 |
 | 2 | Tabuľka existuje | `psql ... '\d demo_task'` | 7 stĺpcov, indexy na `done`, `groupid` | 04 |
 | 3 | Ranking služieb | `greeting:hello`, `stop`/`start` alt bundlu | prepínanie 200 ↔ 100 | 05 |
 | 4 | Portlet render | otvor `/web/guest/task-demo` | tabuľka, `N task(s), showing max 10` | 07 |
@@ -235,7 +238,7 @@ Všetky body sú overené v predchádzajúcich kapitolách. Pri migrácii sa z n
 | 7 | Portlet resource | Load JSON | JSON pole úloh | 07 |
 | 8 | EDIT mód | Preferences → Page Size 2 | `showing max 2`. Hosť nemá prístup. | 07 |
 | 9 | REST GET/POST/PATCH | `curl` na `/o/tasks` | 200 / 201 / 400 / 404, anonym 403 | 08 |
-| 10 | Unit testy | `./gradlew test` | 15/15 | 09 |
+| 10 | Unit testy | `.\gradlew test` | 15/15 | 09 |
 
 Nájdené chyby, ktoré checklist odhalil (a ktoré musí nové riešenie riešiť lepšie):
 - hosť smie pridávať a prepínať úlohy cez portlet ([kapitola 07](07_portlet_mvc.md)),
@@ -269,7 +272,7 @@ Detaily v [kapitole 10](10_spring_boot_projekt.md). Porovnanie:
 | `NullPointerException` na `taskPersistence` v teste | `@Reference` pole nikto nenaplnil (nie je OSGi) | Nastaviť mock ručne (test v balíčku base triedy) alebo reflexiou |
 | `NullPointerException` v `ParamUtil`/`PropsUtil` | Statická utilita hľadá portál | `PropsUtil.setProps(mock(Props.class))` v `@BeforeAll` |
 | `InaccessibleObjectException` / chyby okolo `StringBundler` | JDK 17+ bez `--add-opens` | `jvmArgs "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED", ...` |
-| Testy sa nespustia (`UP-TO-DATE`) | Gradle cache | `./gradlew cleanTest test` |
+| Testy sa nespustia (`UP-TO-DATE`) | Gradle cache | `.\gradlew cleanTest test` |
 | Testy prechádzajú, v portáli to nefunguje | Unit test nepokryje OSGi zapojenie (chýbajúca služba, zlý `mvc.command.name`) | Ručný checklist / integračný test, `scr:info` v Gogo |
 
 ---

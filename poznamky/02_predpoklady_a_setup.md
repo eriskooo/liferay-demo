@@ -24,15 +24,32 @@ Spring Boot časť potrebuje len JDK 21 a Docker (Testcontainers). Maven je tie�
 | JDK | build modulov, Spring Boot | 21 |
 | Gradle | build Liferay workspace | 8.9 (cez `gradlew`) |
 | Maven | build Spring Boot | cez `mvnw` |
-| Git Bash | skripty `gogo.sh`, `create-demo-page.sh` | – |
+| PowerShell (Windows 11) | príkazy v poznámkach, skripty `gogo.ps1`, `create-demo-page.ps1` | Windows PowerShell 5.1 |
 
 ---
 
 ## Krok po kroku
 
+Všetky príkazy v poznámkach sú pre **Windows PowerShell 5.1** (predvolený vo Windows 11). Na čo si dať pozor oproti Linuxu:
+
+- `curl` je v PowerShell 5.1 alias na `Invoke-WebRequest`, preto poznámky volajú vždy **`curl.exe`** (skutočný curl, vo Windows je vstavaný).
+- Namiesto `/dev/null` sa píše `NUL`, namiesto `grep` sa používa `Select-String`.
+- JSON telá sa posielajú **zo súboru** (`--data-binary "@task.json"`). PowerShell 5.1 pri volaní natívnych programov stráca úvodzovky v argumentoch, takže `-d '{"title":"x"}'` by nefungovalo.
+
+### 0. Povoľ spúšťanie skriptov
+
+Pomocné skripty `gogo.ps1` a `create-demo-page.ps1` sú `.ps1` súbory. Windows ich v predvolenom nastavení (`Restricted`) nespustí. Pre svoj účet to povolíš raz (bez admin práv):
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Get-ExecutionPolicy -List
+```
+
+Očakávaný výstup: riadok `CurrentUser       RemoteSigned`. `RemoteSigned` spúšťa lokálne skripty, stiahnuté z internetu musia byť podpísané.
+
 ### 1. Over Docker
 
-```bash
+```powershell
 docker version --format '{{.Server.Version}}'
 ```
 
@@ -48,7 +65,7 @@ Docker Desktop nebeží. Spusti ho a počkaj, kým ikona v lište zozelenie.
 
 Over aj pamäť, ktorú má Docker k dispozícii:
 
-```bash
+```powershell
 docker info --format 'CPUs={{.NCPU}} Mem={{.MemTotal}}'
 ```
 
@@ -56,7 +73,7 @@ Očakávaný výstup napr. `CPUs=16 Mem=16066625536` (bajty, teda ~15 GB). Lifer
 
 ### 2. Over JDK 21
 
-```bash
+```powershell
 java -version
 ```
 
@@ -68,33 +85,27 @@ openjdk version "21.0.9" 2025-10-21
 
 ### 3. Voliteľne: globálne Gradle init skripty
 
-Gradle pri každom builde spúšťa skripty z `~/.gradle/init.d/`. Over, či tam niečo máš:
+Gradle pri každom builde spúšťa skripty z `~/.gradle/init.d/` (vo Windows `%USERPROFILE%\.gradle\init.d`). Over, či tam niečo máš:
 
-```bash
-ls ~/.gradle/init.d
+```powershell
+Get-ChildItem $HOME\.gradle\init.d
 ```
 
 Ak je priečinok prázdny alebo neexistuje, tento krok preskoč.
 
 Ak tam je skript, ktorý pridáva do **každého** buildu nejaký interný Maven repozitár, a ten repozitár nie je dostupný, stiahnutie závislostí zlyhá. Riešenie bez zásahu do globálnej konfigurácie: pre tento projekt použi **oddelený Gradle home**. Gradle potom `~/.gradle/init.d` vôbec nevidí.
 
-```bash
-# Git Bash
-export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo
-```
-
 ```powershell
-# PowerShell
-$env:GRADLE_USER_HOME="$HOME\.gradle-liferay-demo"
+$env:GRADLE_USER_HOME = "$HOME\.gradle-liferay-demo"
 ```
 
-Platí to len pre aktuálne okno terminálu. Pri každom novom okne to nastav znova, alebo to pridaj do `~/.bashrc`, ak chceš natrvalo. Neuškodí to ani vtedy, keď init skripty nemáš, len sa závislosti stiahnu do iného priečinka.
+Platí to len pre aktuálne okno terminálu. Pri každom novom okne to nastav znova, alebo ten riadok pridaj do PowerShell profilu (`notepad $PROFILE`), ak chceš natrvalo. Neuškodí to ani vtedy, keď init skripty nemáš, len sa závislosti stiahnu do iného priečinka.
 
 ### 4. Over Gradle build workspace
 
-```bash
+```powershell
 cd liferay-workspace
-./gradlew projects -q
+.\gradlew projects -q
 ```
 
 Prvé spustenie stiahne Gradle 8.9, Liferay Workspace plugin a ďalšie závislosti (minúty). Ďalšie behy trvajú ~20 s. Očakávaný výstup:
@@ -124,8 +135,8 @@ liferay-workspace/
 ├── gradle.properties        liferay.workspace.product=portal-7.4-ga132  ← NAJDÔLEŽITEJŠÍ RIADOK
 ├── build.gradle             spoločné nastavenie unit testov pre všetky moduly
 ├── docker-compose.yml       Liferay + PostgreSQL (kapitola 03)
-├── gogo.sh                  Gogo shell príkaz do kontajnera (kapitola 05)
-├── create-demo-page.sh      vytvorí stránku s portletom (kapitola 07)
+├── gogo.ps1 (.sh)           Gogo shell príkaz do kontajnera (kapitola 05)
+├── create-demo-page.ps1 (.sh)  vytvorí stránku s portletom (kapitola 07)
 ├── configs/                 konfigurácia portálu pre prostredia
 │   ├── common/              pre všetky prostredia
 │   ├── local/ dev/ uat/ prod/   portal-ext.properties podľa prostredia
@@ -203,10 +214,12 @@ Hlavný rozdiel: v Liferay **kompiluješ proti platforme, ktorá už beží**. V
 
 | Príznak | Príčina | Riešenie |
 |---|---|---|
-| `Could not resolve ...` alebo timeout na neznámy interný repozitár | Globálny init skript v `~/.gradle/init.d` pridáva nedostupný repozitár | `export GRADLE_USER_HOME=$HOME/.gradle-liferay-demo` (krok 3) |
+| `Could not resolve ...` alebo timeout na neznámy interný repozitár | Globálny init skript v `~/.gradle/init.d` pridáva nedostupný repozitár | `$env:GRADLE_USER_HOME = "$HOME\.gradle-liferay-demo"` (krok 3) |
 | `error during connect ... dockerDesktopLinuxEngine` | Docker Desktop nebeží | Spustiť Docker Desktop |
 | Gradle hlási nekompatibilnú Javu | `JAVA_HOME` ukazuje na inú verziu | Nastaviť `JAVA_HOME` na JDK 21, v IDEA Gradle JVM = 21 |
-| `./gradlew: Permission denied` (Git Bash) | Chýba príznak spustiteľnosti | `sh gradlew ...` alebo `chmod +x gradlew` |
+| `... cannot be loaded because running scripts is disabled on this system` pri `.\gogo.ps1` | Execution policy je `Restricted` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (krok 0) |
+| `gradlew : The term 'gradlew' is not recognized ...` | PowerShell nespúšťa programy z aktuálneho priečinka bez cesty | Písať `.\gradlew` (s `.\` na začiatku) |
+| `Invoke-WebRequest : A parameter cannot be found ...` pri `curl` | `curl` je v PowerShell 5.1 alias na `Invoke-WebRequest` | Písať `curl.exe` |
 | IDEA nepozná `MVCPortlet`, všetko červené | Gradle projekt nie je pripojený alebo sync zlyhal | Sekcia IntelliJ IDEA vyššie |
 
 ---

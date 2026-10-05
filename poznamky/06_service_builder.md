@@ -22,7 +22,7 @@ Prečo to Liferay robí takto (a nie JPA):
 ```
                           service.xml
                                |
-                ./gradlew buildService
+                .\gradlew buildService
                                |
         +----------------------+------------------------+
         v                                               v
@@ -102,9 +102,9 @@ Riadok po riadku:
 
 ### 2. Spusti generovanie
 
-```bash
+```powershell
 cd liferay-workspace
-./gradlew :modules:task:task-service:buildService
+.\gradlew :modules:task:task-service:buildService
 ```
 
 Očakávaný výstup:
@@ -123,40 +123,43 @@ Zaujímavé je, čo **nie je** vo výstupe: žiadna Java trieda v `task-api` ani
 
 Upratanie, aby si nemal v gite zbytočné zmeny:
 
-```bash
+```powershell
 git checkout -- modules/task/task-service/src/main/resources/service.properties
-rm -rf modules/task/task-test
+Remove-Item modules\task\task-test -Recurse -Force
 ```
 
 > **Kedy `buildService` spúšťaš:** po každej zmene `service.xml` a po pridaní novej **public** metódy do `TaskLocalServiceImpl`. Service Builder ju skopíruje do rozhrania `TaskLocalService` v `task-api`, inak by ju ostatné moduly nevideli.
 
 ### 3. Pozri, koľko kódu vzniklo
 
-```bash
-find modules/task -name '*.java' -path '*main*' | sed 's|.*/java/||' | sort
+```powershell
+Get-ChildItem modules\task -Recurse -Filter *.java |
+  Where-Object FullName -like '*\main\*' |
+  ForEach-Object { ($_.FullName -split '\\java\\', 2)[1] } |
+  Sort-Object
 ```
 
 ```
-com/example/task/exception/NoSuchTaskException.java
-com/example/task/exception/TaskTitleException.java
-com/example/task/model/Task.java
-com/example/task/model/TaskModel.java
-com/example/task/model/TaskTable.java
-com/example/task/model/TaskWrapper.java
-com/example/task/model/impl/TaskBaseImpl.java
-com/example/task/model/impl/TaskCacheModel.java
-com/example/task/model/impl/TaskImpl.java                   ← tvoj kód
-com/example/task/model/impl/TaskModelImpl.java
-com/example/task/service/TaskLocalService.java
-com/example/task/service/TaskLocalServiceUtil.java
-com/example/task/service/TaskLocalServiceWrapper.java
-com/example/task/service/base/TaskLocalServiceBaseImpl.java
-com/example/task/service/impl/TaskLocalServiceImpl.java     ← tvoj kód
-com/example/task/service/persistence/TaskPersistence.java
-com/example/task/service/persistence/TaskUtil.java
-com/example/task/service/persistence/impl/TaskModelArgumentsResolver.java
-com/example/task/service/persistence/impl/TaskPersistenceImpl.java
-com/example/task/service/persistence/impl/constants/DEMOPersistenceConstants.java
+com\example\task\exception\NoSuchTaskException.java
+com\example\task\exception\TaskTitleException.java
+com\example\task\model\impl\TaskBaseImpl.java
+com\example\task\model\impl\TaskCacheModel.java
+com\example\task\model\impl\TaskImpl.java                   ← tvoj kód
+com\example\task\model\impl\TaskModelImpl.java
+com\example\task\model\Task.java
+com\example\task\model\TaskModel.java
+com\example\task\model\TaskTable.java
+com\example\task\model\TaskWrapper.java
+com\example\task\service\base\TaskLocalServiceBaseImpl.java
+com\example\task\service\impl\TaskLocalServiceImpl.java     ← tvoj kód
+com\example\task\service\persistence\impl\constants\DEMOPersistenceConstants.java
+com\example\task\service\persistence\impl\TaskModelArgumentsResolver.java
+com\example\task\service\persistence\impl\TaskPersistenceImpl.java
+com\example\task\service\persistence\TaskPersistence.java
+com\example\task\service\persistence\TaskUtil.java
+com\example\task\service\TaskLocalService.java
+com\example\task\service\TaskLocalServiceUtil.java
+com\example\task\service\TaskLocalServiceWrapper.java
 ```
 
 20 tried pre jednu entitu so 7 stĺpcami. Samotný `TaskPersistenceImpl.java` má **1 679 riadkov**, `TaskModelImpl.java` 725. V Spring Boot to isté zvládnu 2 súbory (entita + repository).
@@ -182,21 +185,21 @@ Na čo sú tie triedy:
 
 Tabuľka vznikla pri prvom nasadení `task-service` ([kapitola 04](04_build_a_deploy_modulov.md)). Vytvor si pár úloh cez REST API (podrobne v [kapitole 08](08_rest_v_liferay.md)):
 
-```bash
-printf '{"title":"Kúpiť mlieko"}' > task.json
-curl -s -u test@liferay.com:test -H 'Content-Type: application/json' \
-  --data-binary @task.json "http://localhost:8080/o/tasks?groupId=20117"
-rm task.json
+```powershell
+[IO.File]::WriteAllText("$PWD\task.json", '{"title":"Kúpiť mlieko"}')
+curl.exe -s -u test@liferay.com:test -H 'Content-Type: application/json' `
+  --data-binary "@task.json" "http://localhost:8080/o/tasks?groupId=20117"
+Remove-Item task.json
 ```
 
 > `groupId=20117` je ID site „Guest“. U teba môže byť iné, zistíš ho príkazom:
 > `docker compose exec -T postgres psql -U liferay -d lportal -tAc "select groupid from group_ where friendlyurl='/guest'"`
 >
-> JSON posielame zo súboru (`--data-binary @task.json`) kvôli diakritike, vysvetlenie je v sekcii Časté chyby.
+> JSON posielame zo súboru (`--data-binary "@task.json"`) kvôli úvodzovkám a diakritike, vysvetlenie je v sekcii Časté chyby. `[IO.File]::WriteAllText` zapíše UTF-8 bez BOM. `@` musí byť v úvodzovkách, inak ho PowerShell berie ako splatting.
 
 Pozri sa do DB:
 
-```bash
+```powershell
 docker compose exec -T postgres psql -U liferay -d lportal -c "select * from demo_task order by taskid"
 ```
 
@@ -223,8 +226,8 @@ long taskId = counterLocalService.increment(Task.class.getName());
 
 ID teda **nedáva databáza** (sekvencia, identity), ale Liferay služba **Counter**, ktorá si stav drží v tabuľke `counter`:
 
-```bash
-docker compose exec -T postgres psql -U liferay -d lportal -c \
+```powershell
+docker compose exec -T postgres psql -U liferay -d lportal -c `
   "select name, currentid from counter where name = 'com.example.task.model.Task'"
 ```
 
@@ -377,10 +380,10 @@ public class TaskService {
 | Príznak | Príčina | Riešenie |
 |---|---|---|
 | Ručná zmena v `TaskPersistenceImpl` alebo `TaskModelImpl` zmizla | Súbor sa pri `buildService` pregeneroval | Vlastný kód len do `TaskLocalServiceImpl` a `TaskImpl` |
-| Nová metóda v `TaskLocalServiceImpl` nie je vidieť v portlete | Nespustil si `buildService`, metóda nie je v rozhraní `TaskLocalService` | `./gradlew :modules:task:task-service:buildService` a potom `deploy` |
+| Nová metóda v `TaskLocalServiceImpl` nie je vidieť v portlete | Nespustil si `buildService`, metóda nie je v rozhraní `TaskLocalService` | `.\gradlew :modules:task:task-service:buildService` a potom `deploy` |
 | Kompilácia padá na neexistujúcich metódach (napr. `cacheResult`) | Novší Service Builder generuje kód pre novšie API, ako má portál | Pinnúť verziu Service Buildera k verzii portálu (v deme 1.0.496, pozri `task-service/build.gradle`) |
 | Po zmene `service.xml` (nový stĺpec) sa tabuľka nezmenila | `tables.sql` sa spúšťa len ak tabuľka neexistuje | Upgrade proces (`UpgradeStepRegistrator`) + zvýšiť `Liferay-Require-SchemaVersion` v `bnd.bnd`, alebo v dev zmazať tabuľku/DB |
-| Diakritika v DB ako `K�pit` | `curl -d '{"title":"Kúpiť"}'` v Git Bash na Windows neposlal UTF-8 (overené pri písaní kapitoly) | JSON do súboru a `--data-binary @task.json` |
+| Diakritika v DB ako `K�pit` | `curl -d '{"title":"Kúpiť"}'` na Windows neposlal UTF-8 (overené pri písaní kapitoly). V PowerShell 5.1 sa z `-d` navyše stratia úvodzovky a JSON je neplatný | JSON do súboru cez `[IO.File]::WriteAllText` a `--data-binary "@task.json"` |
 | V ID sú veľké diery | Counter rezervuje bloky po 100, reštart nepoužité zahodí | Normálne správanie, nič neopravuj |
 | Priamy SQL `UPDATE` sa v portáli neprejaví | Liferay má entity/finder cache, o zmene v DB nevie | Meniť dáta cez servis. Ak už musíš cez SQL, vyčisti cache (Server Administration) alebo reštartuj |
 

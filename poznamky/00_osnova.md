@@ -34,7 +34,7 @@ Nie je to kompletný kurz Liferay. UI veci (fragmenty, témy, web content) vynec
 |---|---|---|---|
 | 01 | [Čo je Liferay](01_co_je_liferay.md) | Mentálny model: portál, portlet, OSGi, ako je to celé poskladané | Jedna Spring Boot appka vs. „aplikačný server s pluginmi“ |
 | 02 | [Predpoklady a setup](02_predpoklady_a_setup.md) | Docker, JDK 21, Gradle a jeho konfigurácia, orientácia vo workspace | Maven wrapper, `pom.xml` |
-| 03 | [Spustenie Liferay](03_spustenie_liferay.md) | Bežiaci portál v Dockeri, prihlásenie, admin UI, logy | `./mvnw spring-boot:run` |
+| 03 | [Spustenie Liferay](03_spustenie_liferay.md) | Bežiaci portál v Dockeri, prihlásenie, admin UI, logy | `.\mvnw spring-boot:run` |
 | 04 | [Build a deploy modulov](04_build_a_deploy_modulov.md) | `gradlew deploy`, hot deploy, overenie, že modul nabehol | Rebuild a reštart appky, DevTools |
 | 05 | [OSGi a Gogo shell](05_osgi_a_gogo_shell.md) | `@Component`, `@Reference`, `service.ranking`, `bnd.bnd`, príkazy `lb`, `diag`, `services` | Spring DI, `@Primary`, `@Qualifier` |
 | 06 | [Service Builder](06_service_builder.md) | `service.xml`, čo sa generuje, kam patrí vlastný kód | JPA entita, Spring Data repository, `@Service` |
@@ -88,5 +88,5 @@ Podrobne to rieši [kapitola 02](02_predpoklady_a_setup.md), tu je len zoznam:
 
 - Docker Desktop s pridelenými aspoň ~4 GB RAM (samotný Liferay potrebuje ~3 GB)
 - JDK 21
-- Git Bash alebo PowerShell
+- PowerShell (Windows PowerShell 5.1 vo Windows 11), príkazy v poznámkach sú preň
 - Približne 5 GB voľného miesta (Docker image Liferay má cez 1 GB, k tomu Gradle cache)

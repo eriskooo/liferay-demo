@@ -108,12 +108,12 @@ Posledný riadok je na pohovore najdôležitejší. Liferay dáva „zadarmo“ 
 
 ## Krok po kroku: zorientuj sa v repe
 
-V tejto kapitole ešte nič nespúšťaš, len sa pozrieš, ako je demo poskladané. Príkazy sú pre **Git Bash**, spúšťaj ich z koreňa repa (`C:\projekty\tmp\liferay-demo`).
+V tejto kapitole ešte nič nespúšťaš, len sa pozrieš, ako je demo poskladané. Príkazy sú pre **PowerShell** (Windows 11), spúšťaj ich z koreňa repa (`C:\projekty\tmp\liferay-demo`).
 
 ### 1. Aké moduly máme
 
-```bash
-ls liferay-workspace/modules
+```powershell
+Get-ChildItem liferay-workspace\modules -Name
 ```
 
 Očakávaný výstup:
@@ -133,43 +133,48 @@ task-web
 
 Každý bundle má súbor `bnd.bnd` s OSGi metadátami, takže stačí ich spočítať:
 
-```bash
-find liferay-workspace/modules -name bnd.bnd | sort
+```powershell
+Get-ChildItem liferay-workspace\modules -Recurse -Filter bnd.bnd | Resolve-Path -Relative | Sort-Object
 ```
 
 Očakávaný výstup (7 bundlov):
 
 ```
-liferay-workspace/modules/greeting-api/bnd.bnd
-liferay-workspace/modules/greeting-impl-alt/bnd.bnd
-liferay-workspace/modules/greeting-impl/bnd.bnd
-liferay-workspace/modules/task-rest/bnd.bnd
-liferay-workspace/modules/task-web/bnd.bnd
-liferay-workspace/modules/task/task-api/bnd.bnd
-liferay-workspace/modules/task/task-service/bnd.bnd
+.\liferay-workspace\modules\greeting-api\bnd.bnd
+.\liferay-workspace\modules\greeting-impl\bnd.bnd
+.\liferay-workspace\modules\greeting-impl-alt\bnd.bnd
+.\liferay-workspace\modules\task\task-api\bnd.bnd
+.\liferay-workspace\modules\task\task-service\bnd.bnd
+.\liferay-workspace\modules\task-rest\bnd.bnd
+.\liferay-workspace\modules\task-web\bnd.bnd
 ```
 
 Týchto 7 bundlov uvidíš v [kapitole 05](05_osgi_a_gogo_shell.md) v Gogo shelli ako `Active`.
 
 ### 3. Aké OSGi služby moduly registrujú
 
-```bash
-grep -rhoE "service = [A-Za-z]+\.class" liferay-workspace/modules --include=*.java | sort | uniq -c | sort -rn
+```powershell
+Get-ChildItem liferay-workspace\modules -Recurse -Filter *.java |
+  Select-String -CaseSensitive -AllMatches 'service = (\w+)\.class' |
+  ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups[1].Value } |
+  Group-Object | Sort-Object Count -Descending | Format-Table Count, Name -AutoSize
 ```
 
 Očakávaný výstup:
 
 ```
-      3 service = MVCActionCommand.class
-      2 service = GreetingService.class
-      1 service = TaskPersistence.class
-      1 service = Portlet.class
-      1 service = Object.class
-      1 service = MVCResourceCommand.class
-      1 service = MVCRenderCommand.class
-      1 service = ArgumentsResolver.class
-      1 service = Application.class
-      1 service = AopService.class
+Count Name
+----- ----
+    3 MVCActionCommand
+    2 GreetingService
+    1 MVCRenderCommand
+    1 MVCResourceCommand
+    1 Portlet
+    1 Application
+    1 AopService
+    1 Object
+    1 TaskPersistence
+    1 ArgumentsResolver
 ```
 
 Ako to čítať:
@@ -184,31 +189,24 @@ Ako to čítať:
 | `Application` | task-rest | JAX-RS REST API na `/o/tasks` |
 | `AopService`, `TaskPersistence`, `ArgumentsResolver` | task-service | vygeneroval Service Builder (servisná vrstva + perzistencia) |
 
-Ak používaš PowerShell, rovnaký prehľad dá:
-
-```powershell
-Get-ChildItem liferay-workspace\modules -Recurse -Filter *.java |
-  Select-String -Pattern 'service = (\w+)\.class' |
-  ForEach-Object { $_.Matches[0].Groups[1].Value } |
-  Group-Object | Sort-Object Count -Descending | Format-Table Count, Name -AutoSize
-```
-
 ### 4. To isté v Spring Boot projekte
 
-```bash
-grep -rlE "^@(Service|RestController|Repository|Configuration|Component)" spring-boot-tasks/src/main --include=*.java | sort
+```powershell
+Get-ChildItem spring-boot-tasks\src\main -Recurse -Filter *.java |
+  Select-String -CaseSensitive -List '^@(Service|RestController|Repository|Configuration|Component)' |
+  ForEach-Object { Resolve-Path -Relative $_.Path } | Sort-Object
 ```
 
 Očakávaný výstup:
 
 ```
-spring-boot-tasks/src/main/java/com/example/tasks/SpringBootTasksApplication.java
-spring-boot-tasks/src/main/java/com/example/tasks/common/GlobalExceptionHandler.java
-spring-boot-tasks/src/main/java/com/example/tasks/config/OpenApiConfig.java
-spring-boot-tasks/src/main/java/com/example/tasks/config/SecurityConfig.java
-spring-boot-tasks/src/main/java/com/example/tasks/config/TaskProperties.java
-spring-boot-tasks/src/main/java/com/example/tasks/task/TaskController.java
-spring-boot-tasks/src/main/java/com/example/tasks/task/TaskService.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\common\GlobalExceptionHandler.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\config\OpenApiConfig.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\config\SecurityConfig.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\config\TaskProperties.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\SpringBootTasksApplication.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\task\TaskController.java
+.\spring-boot-tasks\src\main\java\com\example\tasks\task\TaskService.java
 ```
 
 Všimni si, že `TaskRepository` v zozname chýba. Je to rozhranie `extends JpaRepository<Task, Long>` bez anotácie a Spring Data si implementáciu vyrobí sám. V Liferay to isté robí Service Builder, len generuje skutočný kód (`TaskPersistenceImpl`) do repa.
