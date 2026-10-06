@@ -45,6 +45,7 @@ Nie je to kompletný kurz Liferay. UI veci (fragmenty, témy, web content) vynec
 | 11 | [Migrácia dát a security](11_migracia_dat_a_security.md) | Flyway import z Liferay tabuľky, Keycloak/OAuth2 namiesto Liferay rolí | Flyway, Spring Security resource server |
 | 12 | [Migračná stratégia](12_migracna_strategia.md) | Strangler fig, URL, vyhľadávanie, dokumenty, používatelia a oprávnenia | – |
 | 13 | [Otázky na pohovor](13_otazky_na_pohovor.md) | Otázky s odpoveďami + „war stories“ z buildu demo projektu | – |
+| 14 | [Zhrnutie](14_zhrnutie.md) | 10 základných bodov z celých poznámok | – |
 
 ---
 
