@@ -17,7 +17,7 @@
 | Kontajner | Image | Port na tvojom PC | Načo |
 |---|---|---|---|
 | `postgres` | `postgres:16` | `5433` | databáza `lportal` (user/heslo `liferay`/`liferay`) |
-| `liferay` | `liferay/portal:7.4.3.132-ga132` | `8080` | portál |
+| `liferay` | `liferay/portal:7.4.3.132-ga132` | `8080`, `8000` | portál, `8000` = remote debug ([kapitola 04](04_build_a_deploy_modulov.md#8-debug-v-intellij-remote-debug)) |
 
 Port PostgreSQL je **5433**, nie štandardných 5432, aby nekolidoval s prípadným lokálnym PostgreSQL. Na tú istú DB sa neskôr pripojí aj Spring Boot ([kapitola 11](11_migracia_dat_a_security.md)).
 
@@ -106,7 +106,7 @@ Očakávaný výstup (skrátený):
 
 ```
 NAME                           IMAGE                            STATUS                   PORTS
-liferay-workspace-liferay-1    liferay/portal:7.4.3.132-ga132   Up 2 minutes (healthy)   0.0.0.0:8080->8080/tcp
+liferay-workspace-liferay-1    liferay/portal:7.4.3.132-ga132   Up 2 minutes (healthy)   0.0.0.0:8000->8000/tcp, 0.0.0.0:8080->8080/tcp
 liferay-workspace-postgres-1   postgres:16                      Up 3 minutes (healthy)   0.0.0.0:5433->5432/tcp
 ```
 

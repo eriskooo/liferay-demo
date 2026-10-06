@@ -24,8 +24,12 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+      # Remote debug (IntelliJ: Remote JVM Debug, localhost:8000) – jen pro lokální vývoj
+      - "8000:8000"
       # Gogo shell je v kontejneru jen na localhost:11311 -> používej ./gogo.sh
     environment:
+      # Image pak spustí Tomcat s JPDA na JPDA_ADDRESS (default 0.0.0.0:8000)
+      LIFERAY_JPDA_ENABLED: "true"
       # LIFERAY_* proměnné = portal-ext.properties (tečka = _PERIOD_, velké písmeno = _UPPERCASE<X>)
       LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_DRIVER_UPPERCASEC_LASS_UPPERCASEN_AME: org.postgresql.Driver
       LIFERAY_JDBC_PERIOD_DEFAULT_PERIOD_URL: jdbc:postgresql://postgres:5432/lportal

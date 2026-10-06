@@ -7,6 +7,7 @@
 - Ako overiť, že modul naozaj nabehol (log, Gogo, DB)
 - Ako modul odobrať a znova nasadiť
 - Čo je v zbuildenom bundli (`MANIFEST.MF`)
+- Ako debugovať modul (portlet, REST, servis) v IntelliJ cez remote debug
 
 **Predpoklad:** Liferay beží ([kapitola 03](03_spustenie_liferay.md)) a máš nastavený `GRADLE_USER_HOME` ([kapitola 02](02_predpoklady_a_setup.md)).
 
@@ -235,6 +236,57 @@ Bežný vývojový cyklus:
 3. File Install zistí zmenený JAR a urobí **update** bundlu (ID zostane rovnaké).
 4. Overíš v logu (`STARTED`) a v prehliadači.
 
+### 8. Debug v IntelliJ (remote debug)
+
+Liferay je obyčajná JVM v Tomcate, takže sa naň IntelliJ pripojí cez **JDWP** (Java Debug Wire Protocol). Breakpointy potom fungujú v `MVC*Command`, JAX-RS resource aj `*LocalServiceImpl`.
+
+V [`docker-compose.yml`](../liferay-workspace/docker-compose.yml) je to už zapnuté:
+
+```yaml
+  liferay:
+    ports:
+      - "8080:8080"
+      - "8000:8000"                 # debug port
+    environment:
+      LIFERAY_JPDA_ENABLED: "true"  # Tomcat sa spustí s JPDA na JPDA_ADDRESS (v image 0.0.0.0:8000)
+```
+
+Zmena premenných alebo portov sa prejaví až v **novom** kontajneri. `docker compose restart` nestačí:
+
+```powershell
+docker compose up -d liferay
+docker compose logs liferay | Select-String "Listening for transport"
+```
+
+Očakávaný výstup:
+
+```
+liferay-1  | Listening for transport dt_socket at address: 8000
+```
+
+Kontrola, že port je dostupný z Windows:
+
+```powershell
+(Test-NetConnection localhost -Port 8000 -WarningAction SilentlyContinue).TcpTestSucceeded
+```
+
+Očakávaný výstup: `True`
+
+**Nastavenie IntelliJ:**
+
+1. *Run → Edit Configurations → + → Remote JVM Debug*
+2. Host `localhost`, port `8000`, *Use module classpath*: modul, ktorý debuguješ (napr. `task-web`)
+3. Spusti **Debug**. V konzole sa objaví `Connected to the target VM, address: 'localhost:8000'`.
+4. Daj breakpoint napr. do `AddTaskMVCActionCommand.doProcessAction` a pridaj úlohu na stránke `/web/guest/task-demo`.
+
+**Na čo myslieť:**
+
+- Kód v IDE sa musí zhodovať s nasadeným JAR-om. Po zmene vždy `.\gradlew deploy`, inak breakpointy nesedia.
+- **HotSwap** (*Run → Debugging Actions → Reload Changed Classes*) zvládne len zmenu tela metódy. Nová metóda, pole alebo anotácia = `deploy`. Debugger zostane pripojený, lebo portál beží ďalej.
+- Render sa volá pri **každom** zobrazení stránky, takže breakpoint v render commande sa zastaví často. Action až po odoslaní formulára ([kapitola 07](07_portlet_mvc.md)).
+- Ak sa breakpoint zastaví v čase, keď drží request, prehliadač čaká. Pri dlhom debugovaní môže Liferay vypísať varovanie o dlho bežiacom vlákne, nie je to chyba.
+- Debug port **nikdy do produkcie**. Kto sa naň pripojí, môže v JVM spustiť ľubovoľný kód.
+
 ---
 
 ## Kód z repa: čo je v bundli
@@ -290,6 +342,7 @@ Riadky sú zalomené na 72 znakov a pokračujú medzerou na začiatku. To je št
 | Overenie: `STARTED ...` v logu, `lb` v Gogo | Overenie: `Started ...Application in ... seconds`, `/actuator/health` |
 | Viac verzií modulov v jednom portáli | Jedna verzia všetkého v jednej appke |
 | Nasadenie do produkcie: JARy do `osgi/modules` alebo vlastný Docker image | Docker image s JAR-om, rolling update v Kubernetes |
+| Debug: Remote JVM Debug na port 8000 kontajnera | Debug priamo spustenej `main()` triedy v IDE |
 
 Hot deploy vyzerá ako výhoda, v praxi sa však produkcia aj tak nasadzuje celým image kvôli reprodukovateľnosti. Pri migrácii sa preto hot deploy zvyčajne nestráca nič podstatné.
 
@@ -304,6 +357,8 @@ Hot deploy vyzerá ako výhoda, v praxi sa však produkcia aj tak nasadzuje cel�
 | `bundles/osgi/modules` je prázdny, hoci deploy prebehol | Liferay sa spúšťa z iného priečinka (napr. `docker compose` z iného adresára) | `docker compose` vždy spúšťaj v `liferay-workspace` |
 | Bundle je `Active`, ale portlet sa nezobrazuje v ponuke | Komponent portletu nie je aktívny (chýba `@Reference`) | `.\gogo.ps1 "scr:info <trieda>"`, [kapitola 07](07_portlet_mvc.md) |
 | Tabuľka `demo_task` nevznikla | Bundle `task-service` nenabehol | Over `lb` a log, hľadaj `ERROR` |
+| IntelliJ: `Connection refused` na `localhost:8000` | Kontajner beží so starou konfiguráciou (`LIFERAY_JPDA_ENABLED=false`, port 8000 nie je v `docker compose ps`) | `docker compose up -d liferay` (nie `restart`), over `Listening for transport` v logu |
+| Breakpoint je prečiarknutý alebo sa nezastaví | Nasadený JAR je iný ako kód v IDE, alebo sa daná fáza nevolá | `.\gradlew deploy`, skontroluj, či ide o render/action/resource |
 
 ---
 
